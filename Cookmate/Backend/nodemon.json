@@ -1,0 +1,7 @@
+{
+  "watch": ["src", ".env"],
+  "ext": "js,json,env",
+  "ignore": ["uploads/**", "node_modules/**"],
+  "legacyWatch": true,
+  "delay": "500"
+}

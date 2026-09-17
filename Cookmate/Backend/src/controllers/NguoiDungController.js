@@ -1,134 +1,69 @@
-const { Op } = require("sequelize");
-
-const db = require("../models");
-const asyncHandler = require("../utils/asyncHandler");
-const { sendError, sendSuccess } = require("../utils/apiResponse");
-const { getPagination, getPagingMeta, normalizeText, toPositiveInt } = require("../utils/query");
-const { sanitizeUser } = require("../utils/serializers");
-
-const userInclude = [
-    {
-        model: db.VaiTro,
-        as: "vaiTro",
-        attributes: ["idVaiTro", "tenVaiTro", "moTa"]
-    }
+const { Op } = require('sequelize');
+const db = require('../models');
+const asyncHandler = require('../utils/asyncHandler');
+const { sendSuccess } = require('../utils/apiResponse');
+const { getPagination, getPagingMeta } = require('../utils/query');
+const { sanitizeUser } = require('../utils/serializers');
+const permissions = require('../utils/permissionTransaction');
+const audit = require('../utils/audit');
+const error = require('../utils/httpError');
+const include = [
+  { model: db.VaiTro, as: 'vaiTro', attributes: ['idVaiTro', 'tenVaiTro', 'trangThai'] },
 ];
-
-const NguoiDungController = {
-    list: asyncHandler(async (req, res) => {
-        const { page, limit, offset } = getPagination(req.query);
-        const where = {};
-        const keyword = normalizeText(req.query.q || req.query.search);
-
-        if (keyword) {
-            where[Op.or] = [
-                {
-                    hoTen: {
-                        [Op.like]: `%${keyword}%`
-                    }
-                },
-                {
-                    email: {
-                        [Op.like]: `%${keyword}%`
-                    }
-                },
-                {
-                    soDienThoai: {
-                        [Op.like]: `%${keyword}%`
-                    }
-                }
-            ];
-        }
-
-        if (req.query.trangThai !== undefined) {
-            where.trangThai = Number.parseInt(req.query.trangThai, 10);
-        }
-
-        if (req.query.idVaiTro !== undefined) {
-            where.idVaiTro = Number.parseInt(req.query.idVaiTro, 10);
-        }
-
-        const result = await db.NguoiDung.findAndCountAll({
-            where,
-            include: userInclude,
-            order: [["ngayTao", "DESC"]],
-            limit,
-            offset
-        });
-
-        return sendSuccess(
-            res,
-            200,
-            "Users loaded",
-            result.rows.map(sanitizeUser),
-            getPagingMeta(result.count, page, limit)
-        );
-    }),
-
-    detail: asyncHandler(async (req, res) => {
-        const user = await db.NguoiDung.findByPk(req.params.id, {
-            include: userInclude
-        });
-
-        if (!user) {
-            return sendError(res, 404, "User not found");
-        }
-
-        return sendSuccess(res, 200, "User loaded", sanitizeUser(user));
-    }),
-
-    update: asyncHandler(async (req, res) => {
-        const user = await db.NguoiDung.findByPk(req.params.id, {
-            include: userInclude
-        });
-
-        if (!user) {
-            return sendError(res, 404, "User not found");
-        }
-
-        const payload = {};
-
-        ["hoTen", "soDienThoai", "anhDaiDien"].forEach((field) => {
-            if (Object.prototype.hasOwnProperty.call(req.body, field)) {
-                payload[field] = normalizeText(req.body[field]) || null;
-            }
-        });
-
-        if (Object.prototype.hasOwnProperty.call(req.body, "idVaiTro")) {
-            const idVaiTro = toPositiveInt(req.body.idVaiTro);
-            if (!idVaiTro) {
-                return sendError(res, 400, "idVaiTro must be a positive integer");
-            }
-
-            const role = await db.VaiTro.findOne({
-                where: {
-                    idVaiTro,
-                    trangThai: 1
-                }
-            });
-
-            if (!role) {
-                return sendError(res, 400, "Role does not exist");
-            }
-
-            payload.idVaiTro = idVaiTro;
-        }
-
-        if (Object.prototype.hasOwnProperty.call(req.body, "trangThai")) {
-            payload.trangThai = Number.parseInt(req.body.trangThai, 10);
-        }
-
-        if (Object.keys(payload).length === 0) {
-            return sendError(res, 400, "No valid fields to update");
-        }
-
-        payload.ngayCapNhat = new Date();
-
-        await user.update(payload);
-        await user.reload({ include: userInclude });
-
-        return sendSuccess(res, 200, "User updated", sanitizeUser(user));
-    })
+module.exports = {
+  list: asyncHandler(async (req, res) => {
+    const { page, limit, offset } = getPagination(req.query);
+    const where = {};
+    if (req.query.q)
+      where[Op.or] = ['hoTen', 'email', 'soDienThoai'].map((k) => ({
+        [k]: { [Op.like]: `%${req.query.q}%` },
+      }));
+    if (req.query.trangThai !== undefined) where.trangThai = Number(req.query.trangThai);
+    if (req.query.idVaiTro) where.idVaiTro = Number(req.query.idVaiTro);
+    const r = await db.NguoiDung.findAndCountAll({
+      where,
+      include,
+      order: [['ngayTao', 'DESC'], ['idNguoiDung', 'DESC']],
+      limit,
+      offset,
+    });
+    return sendSuccess(
+      res,
+      200,
+      'Người dùng',
+      r.rows.map(sanitizeUser),
+      getPagingMeta(r.count, page, limit),
+    );
+  }),
+  detail: asyncHandler(async (req, res) => {
+    const user = await db.NguoiDung.findByPk(req.params.id, { include });
+    if (!user) throw error(404, 'Không tìm thấy người dùng.');
+    return sendSuccess(res, 200, 'Người dùng', sanitizeUser(user));
+  }),
+  update: asyncHandler(async (req, res) => {
+    const id = await permissions(req, async ({ transaction, roles, users }) => {
+      const user = users.find((u) => u.idNguoiDung === Number(req.params.id));
+      if (!user) throw error(404, 'Không tìm thấy người dùng.');
+      if (
+        req.body.idVaiTro &&
+        !roles.some((r) => r.idVaiTro === req.body.idVaiTro && r.trangThai === 1)
+      )
+        throw error(400, 'Vai trò không hợp lệ.');
+      const payload = { ...req.body, ngayCapNhat: new Date() };
+      if (
+        (payload.trangThai !== undefined && payload.trangThai !== user.trangThai) ||
+        (payload.idVaiTro !== undefined && payload.idVaiTro !== user.idVaiTro)
+      )
+        payload.tokenVersion = user.tokenVersion + 1;
+      await user.update(payload, { transaction });
+      await audit(req, 'UPDATE', 'NguoiDung', user.idNguoiDung, transaction);
+      return user.idNguoiDung;
+    });
+    return sendSuccess(
+      res,
+      200,
+      'Đã cập nhật',
+      sanitizeUser(await db.NguoiDung.findByPk(id, { include })),
+    );
+  }),
 };
-
-module.exports = NguoiDungController;

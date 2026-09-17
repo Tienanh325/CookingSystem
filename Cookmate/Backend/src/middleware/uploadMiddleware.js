@@ -1,35 +1,21 @@
-const path = require("path");
-const multer = require("multer");
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, "uploads");
-    },
-    filename: (req, file, cb) => {
-        const ext = path.extname(file.originalname || "").toLowerCase();
-        const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-        cb(null, uniqueName);
-    }
-});
-
-const imageFileFilter = (req, file, cb) => {
-    if (!file.mimetype || !file.mimetype.startsWith("image/")) {
-        const error = new Error("Only image files are allowed");
-        error.statusCode = 400;
-        return cb(error);
-    }
-
-    return cb(null, true);
-};
-
+const multer = require('multer');
+const { rateLimit } = require('express-rate-limit');
 const uploadImage = multer({
-    storage,
-    fileFilter: imageFileFilter,
-    limits: {
-        fileSize: 5 * 1024 * 1024
-    }
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, cb) => {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype))
+      return cb(
+        Object.assign(new Error('Chỉ chấp nhận ảnh JPEG, PNG hoặc WebP.'), { statusCode: 400 }),
+      );
+    cb(null, true);
+  },
 });
-
-module.exports = {
-    uploadImage
-};
+const uploadLimit = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { success: false, message: 'Bạn tải ảnh quá nhanh. Hãy thử lại sau.' },
+});
+module.exports = { uploadImage, uploadLimit };

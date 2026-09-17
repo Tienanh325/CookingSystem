@@ -1,0 +1,56 @@
+require('dotenv').config({ path: require('path').join(__dirname, '../.env'), quiet: true });
+const { DataTypes } = require('sequelize');
+const sequelize = require('../src/config/database');
+require('../src/models');
+
+async function migrate() {
+  const qi = sequelize.getQueryInterface();
+  const tables = (await qi.showAllTables()).map((t) => String(t).toLowerCase());
+  const changes = [
+    ['NguoiDung', 'tokenVersion', { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 }],
+    ['MonAn', 'phienBan', { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 }],
+    ['BuocNau', 'phienBan', { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 }],
+    ['LichSuNau', 'congThucSnapshot', { type: DataTypes.JSON, allowNull: true }],
+  ];
+  for (const [table, column, definition] of changes) {
+    if (tables.includes(table.toLowerCase()) && !(await qi.describeTable(table))[column])
+      await qi.addColumn(table, column, definition);
+  }
+  if (tables.includes('buocnau')) {
+    const indexes = await qi.showIndex('BuocNau');
+    if (!indexes.some((i) => i.name === 'uq_recipe_version_step'))
+      await qi.addIndex('BuocNau', ['idMonAn', 'phienBan', 'soThuTu'], {
+        unique: true,
+        name: 'uq_recipe_version_step',
+      });
+    for (const i of indexes)
+      if (i.unique && i.fields.map((f) => f.attribute).join(',') === 'idMonAn,soThuTu')
+        await qi.removeIndex('BuocNau', i.name);
+  }
+  // No force/alter: creates missing tables only; existing rows remain intact.
+  if (tables.includes('nguoidung')) {
+    const columns = await qi.describeTable('NguoiDung');
+    for (const [column, size] of [
+      ['email', 150],
+      ['matKhau', 255],
+    ]) {
+      if (!columns[column].allowNull)
+        await qi.changeColumn('NguoiDung', column, {
+          type: DataTypes.STRING(size),
+          allowNull: true,
+        });
+    }
+  }
+  await sequelize.sync();
+  console.log(
+    'Schema ready: token revocation, versioned steps, history snapshots and unique indexes.',
+  );
+}
+module.exports = migrate;
+if (require.main === module)
+  migrate()
+    .catch((e) => {
+      console.error(e.message);
+      process.exitCode = 1;
+    })
+    .finally(() => sequelize.close());

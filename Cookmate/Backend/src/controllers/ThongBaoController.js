@@ -1,138 +1,94 @@
-const sequelize = require("../config/database");
-const db = require("../models");
-const asyncHandler = require("../utils/asyncHandler");
-const { sendError, sendSuccess } = require("../utils/apiResponse");
-const { getPagination, getPagingMeta, normalizeText, parseIdArray } = require("../utils/query");
-
-const ThongBaoController = {
-    listMine: asyncHandler(async (req, res) => {
-        const { page, limit, offset } = getPagination(req.query);
-        const where = {
-            idNguoiDung: req.auth.idNguoiDung
-        };
-
-        if (req.query.daDoc !== undefined) {
-            where.daDoc = Number.parseInt(req.query.daDoc, 10);
-        }
-
-        const result = await db.ThongBaoNguoiDung.findAndCountAll({
-            where,
-            include: [
-                {
-                    model: db.ThongBao,
-                    as: "thongBao"
-                }
-            ],
-            order: [[{ model: db.ThongBao, as: "thongBao" }, "ngayTao", "DESC"]],
-            limit,
-            offset
-        });
-
-        return sendSuccess(
-            res,
-            200,
-            "Notifications loaded",
-            result.rows,
-            getPagingMeta(result.count, page, limit)
-        );
-    }),
-
-    markRead: asyncHandler(async (req, res) => {
-        const notification = await db.ThongBaoNguoiDung.findOne({
-            where: {
-                idNguoiDung: req.auth.idNguoiDung,
-                idThongBao: req.params.id
-            }
-        });
-
-        if (!notification) {
-            return sendError(res, 404, "Notification not found");
-        }
-
-        await notification.update({
-            daDoc: 1,
-            thoiGianDoc: new Date()
-        });
-
-        return sendSuccess(res, 200, "Notification marked as read", notification);
-    }),
-
-    markAllRead: asyncHandler(async (req, res) => {
-        await db.ThongBaoNguoiDung.update(
-            {
-                daDoc: 1,
-                thoiGianDoc: new Date()
-            },
-            {
-                where: {
-                    idNguoiDung: req.auth.idNguoiDung,
-                    daDoc: 0
-                }
-            }
-        );
-
-        return sendSuccess(res, 200, "All notifications marked as read");
-    }),
-
-    create: asyncHandler(async (req, res) => {
-        const tieuDe = normalizeText(req.body.tieuDe);
-        const noiDung = normalizeText(req.body.noiDung);
-
-        if (!tieuDe || !noiDung) {
-            return sendError(res, 400, "tieuDe and noiDung are required");
-        }
-
-        let recipientIds = parseIdArray(req.body.idNguoiDungs);
-
-        if (req.body.guiTatCa === true || String(req.body.guiTatCa).toLowerCase() === "true") {
-            const users = await db.NguoiDung.findAll({
-                attributes: ["idNguoiDung"],
-                where: {
-                    trangThai: 1
-                },
-                raw: true
-            });
-
-            recipientIds = users.map((user) => user.idNguoiDung);
-        }
-
-        const transaction = await sequelize.transaction();
-
-        try {
-            const thongBao = await db.ThongBao.create(
-                {
-                    tieuDe,
-                    noiDung,
-                    loai: normalizeText(req.body.loai) || null,
-                    duongDan: normalizeText(req.body.duongDan) || null
-                },
-                { transaction }
-            );
-
-            if (recipientIds.length > 0) {
-                await db.ThongBaoNguoiDung.bulkCreate(
-                    recipientIds.map((idNguoiDung) => ({
-                        idThongBao: thongBao.idThongBao,
-                        idNguoiDung
-                    })),
-                    {
-                        ignoreDuplicates: true,
-                        transaction
-                    }
-                );
-            }
-
-            await transaction.commit();
-
-            return sendSuccess(res, 201, "Notification created", {
-                thongBao,
-                soNguoiNhan: recipientIds.length
-            });
-        } catch (error) {
-            await transaction.rollback();
-            throw error;
-        }
-    })
+const { Op, fn, col } = require('sequelize');
+const sequelize = require('../config/database');
+const db = require('../models');
+const asyncHandler = require('../utils/asyncHandler');
+const { sendSuccess } = require('../utils/apiResponse');
+const { getPagination, getPagingMeta } = require('../utils/query');
+const audit = require('../utils/audit');
+const error = require('../utils/httpError');
+module.exports = {
+  listMine: asyncHandler(async (req, res) => {
+    const { page, limit, offset } = getPagination(req.query);
+    const where = { idNguoiDung: req.auth.idNguoiDung };
+    if (req.query.daDoc !== undefined) where.daDoc = Number(req.query.daDoc);
+    const r = await db.ThongBaoNguoiDung.findAndCountAll({
+      where,
+      include: [{ model: db.ThongBao, as: 'thongBao' }],
+      order: [[{ model: db.ThongBao, as: 'thongBao' }, 'ngayTao', 'DESC'], ['idThongBao', 'DESC']],
+      limit,
+      offset,
+    });
+    return sendSuccess(res, 200, 'Thông báo', r.rows, getPagingMeta(r.count, page, limit));
+  }),
+  listSent: asyncHandler(async (req, res) => {
+    const { page, limit, offset } = getPagination(req.query);
+    const r = await db.ThongBao.findAndCountAll({ order: [['ngayTao', 'DESC'], ['idThongBao', 'DESC']], limit, offset });
+    const counts = await db.ThongBaoNguoiDung.findAll({
+      attributes: [
+        'idThongBao',
+        [fn('COUNT', col('idNguoiDung')), 'recipients'],
+        [fn('SUM', col('daDoc')), 'read'],
+      ],
+      where: { idThongBao: { [Op.in]: r.rows.map((x) => x.idThongBao) } },
+      group: ['idThongBao'],
+      raw: true,
+    });
+    return sendSuccess(
+      res,
+      200,
+      'Thông báo đã gửi',
+      r.rows.map((row) => ({
+        ...row.toJSON(),
+        ...counts.find((c) => c.idThongBao === row.idThongBao),
+      })),
+      getPagingMeta(r.count, page, limit),
+    );
+  }),
+  markRead: asyncHandler(async (req, res) => {
+    const row = await db.ThongBaoNguoiDung.findOne({
+      where: { idNguoiDung: req.auth.idNguoiDung, idThongBao: req.params.id },
+    });
+    if (!row) throw error(404, 'Thông báo không tồn tại.');
+    if (!row.daDoc) await row.update({ daDoc: 1, thoiGianDoc: new Date() });
+    return sendSuccess(res, 200, 'Đã đọc', row);
+  }),
+  markAllRead: asyncHandler(async (req, res) => {
+    await db.ThongBaoNguoiDung.update(
+      { daDoc: 1, thoiGianDoc: new Date() },
+      { where: { idNguoiDung: req.auth.idNguoiDung, daDoc: 0 } },
+    );
+    return sendSuccess(res, 200, 'Đã đọc tất cả');
+  }),
+  create: asyncHandler(async (req, res) => {
+    const result = await sequelize.transaction(async (transaction) => {
+      const selected = [...new Set(req.body.idNguoiDungs || [])];
+      const users = await db.NguoiDung.findAll({
+        where: {
+          trangThai: 1,
+          ...(req.body.guiTatCa ? {} : { idNguoiDung: { [Op.in]: selected } }),
+        },
+        attributes: ['idNguoiDung'],
+        transaction,
+      });
+      if (!users.length) throw error(400, 'Không có người nhận đang hoạt động.');
+      if (!req.body.guiTatCa && users.length !== selected.length)
+        throw error(400, 'Có người nhận không tồn tại hoặc bị khóa.');
+      const thongBao = await db.ThongBao.create(
+        {
+          tieuDe: req.body.tieuDe,
+          noiDung: req.body.noiDung,
+          loai: req.body.loai || null,
+          duongDan: req.body.duongDan || null,
+        },
+        { transaction },
+      );
+      await db.ThongBaoNguoiDung.bulkCreate(
+        users.map((u) => ({ idThongBao: thongBao.idThongBao, idNguoiDung: u.idNguoiDung })),
+        { transaction },
+      );
+      await audit(req, 'CREATE', 'ThongBao', thongBao.idThongBao, transaction);
+      return { thongBao, soNguoiNhan: users.length };
+    });
+    return sendSuccess(res, 201, 'Đã gửi thông báo', result);
+  }),
 };
-
-module.exports = ThongBaoController;

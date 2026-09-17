@@ -1,327 +1,150 @@
-const sequelize = require("../config/database");
-const db = require("../models");
-const asyncHandler = require("../utils/asyncHandler");
-const { sendError, sendSuccess } = require("../utils/apiResponse");
-const { getPagination, getPagingMeta } = require("../utils/query");
-
-const parseBoolean = (value, fallback = true) => {
-    if (value === undefined || value === null) {
-        return fallback;
-    }
-
-    if (typeof value === "boolean") {
-        return value;
-    }
-
-    return ["1", "true", "yes"].includes(String(value).toLowerCase());
-};
-
-const historyIncludes = [
-    {
-        model: db.MonAn,
-        as: "monAn",
-        attributes: ["idMonAn", "tenMonAn", "anhDaiDien", "tongThoiGian"],
-        include: [
-            {
-                model: db.DanhMuc,
-                as: "danhMuc",
-                attributes: ["idDanhMuc", "tenDanhMuc"]
-            }
-        ]
-    },
-    {
-        model: db.ChiTietLichSuNau,
-        as: "chiTietLichSuNaus",
-        include: [
-            {
-                model: db.BuocNau,
-                as: "buocNau"
-            }
-        ]
-    }
+const sequelize = require('../config/database');
+const db = require('../models');
+const asyncHandler = require('../utils/asyncHandler');
+const { sendSuccess } = require('../utils/apiResponse');
+const error = require('../utils/httpError');
+const { getPagination, getPagingMeta } = require('../utils/query');
+const includes = [
+  {
+    model: db.MonAn,
+    as: 'monAn',
+    attributes: ['idMonAn', 'tenMonAn', 'anhDaiDien', 'tongThoiGian'],
+  },
+  {
+    model: db.ChiTietLichSuNau,
+    as: 'chiTietLichSuNaus',
+    include: [{ model: db.BuocNau, as: 'buocNau' }],
+  },
 ];
-
-const fetchHistory = async (idLichSu) => {
-    return db.LichSuNau.findByPk(idLichSu, {
-        include: historyIncludes
+const fetchHistory = (id) => db.LichSuNau.findByPk(id, { include: includes });
+function access(req, history) {
+  if (!history) throw error(404, 'Không tìm thấy lịch sử nấu.');
+  if (!req.auth.isAdmin && Number(history.idNguoiDung) !== req.auth.idNguoiDung)
+    throw error(403, 'Bạn không có quyền truy cập lịch sử này.');
+}
+async function mutate(req, action) {
+  await sequelize.transaction(async (transaction) => {
+    const history = await db.LichSuNau.findByPk(req.params.id, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
     });
-};
-
-const canAccessHistory = (req, history) => {
-    return req.auth.isAdmin || Number(history.idNguoiDung) === Number(req.auth.idNguoiDung);
-};
-
-const syncHistoryProgress = async (history) => {
-    const [steps, details] = await Promise.all([
-        db.BuocNau.findAll({
-            where: {
-                idMonAn: history.idMonAn
-            },
-            order: [["soThuTu", "ASC"]]
-        }),
-        db.ChiTietLichSuNau.findAll({
-            where: {
-                idLichSu: history.idLichSu
-            }
-        })
-    ]);
-
-    const completedStepIds = new Set(
-        details
-            .filter((detail) => detail.daHoanThanh === 1)
-            .map((detail) => Number(detail.idBuocNau))
-    );
-
-    const firstIncompleteStep = steps.find((step) => !completedStepIds.has(Number(step.idBuocNau)));
-
-    if (!firstIncompleteStep && steps.length > 0) {
-        await history.update({
-            trangThai: "HOAN_THANH",
-            buocHienTai: steps[steps.length - 1].soThuTu,
-            thoiGianKetThuc: history.thoiGianKetThuc || new Date()
-        });
-        return;
+    access(req, history);
+    if (history.trangThai !== 'DANG_NAU')
+      throw error(409, 'Phiên nấu đã kết thúc, không thể thay đổi.');
+    const details = await db.ChiTietLichSuNau.findAll({
+      where: { idLichSu: history.idLichSu },
+      include: [{ model: db.BuocNau, as: 'buocNau' }],
+      transaction,
+    });
+    details.sort((a, b) => a.buocNau.soThuTu - b.buocNau.soThuTu);
+    if (action === 'cancel') {
+      await history.update({ trangThai: 'DA_HUY', thoiGianKetThuc: new Date() }, { transaction });
+      return;
     }
-
-    await history.update({
-        trangThai: "DANG_NAU",
-        buocHienTai: firstIncompleteStep ? firstIncompleteStep.soThuTu : 1,
-        thoiGianKetThuc: null
+    if (action === 'step') {
+      const detail = details.find((d) => d.idBuocNau === Number(req.params.idBuocNau));
+      if (!detail) throw error(404, 'Bước nấu không thuộc phiên này.');
+      await detail.update(
+        {
+          daHoanThanh: req.body.daHoanThanh ? 1 : 0,
+          thoiGianHoanThanh: req.body.daHoanThanh ? new Date() : null,
+        },
+        { transaction },
+      );
+    }
+    const incomplete = details.find((d) => d.daHoanThanh !== 1);
+    if (action === 'finish' && incomplete)
+      throw error(409, 'Hãy hoàn thành các bước trước khi kết thúc.');
+    const done = details.length > 0 && !incomplete;
+    await history.update(
+      {
+        trangThai: done ? 'HOAN_THANH' : 'DANG_NAU',
+        buocHienTai: incomplete?.buocNau.soThuTu || details.at(-1)?.buocNau.soThuTu || 1,
+        thoiGianKetThuc: done ? new Date() : null,
+      },
+      { transaction },
+    );
+  });
+  return fetchHistory(req.params.id);
+}
+module.exports = {
+  listMine: asyncHandler(async (req, res) => {
+    const { page, limit, offset } = getPagination(req.query);
+    const where = { idNguoiDung: req.auth.idNguoiDung };
+    if (req.query.trangThai) where.trangThai = req.query.trangThai;
+    const result = await db.LichSuNau.findAndCountAll({
+      where,
+      include: [includes[0]],
+      order: [
+        ['thoiGianBatDau', 'DESC'],
+        ['idLichSu', 'DESC'],
+      ],
+      limit,
+      offset,
     });
+    return sendSuccess(
+      res,
+      200,
+      'Lịch sử nấu ăn',
+      result.rows,
+      getPagingMeta(result.count, page, limit),
+    );
+  }),
+  detail: asyncHandler(async (req, res) => {
+    const history = await fetchHistory(req.params.id);
+    access(req, history);
+    return sendSuccess(res, 200, 'Chi tiết phiên nấu', history);
+  }),
+  start: asyncHandler(async (req, res) => {
+    const idMonAn = Number(req.params.id || req.body?.idMonAn);
+    if (!Number.isSafeInteger(idMonAn) || idMonAn < 1) throw error(400, 'ID món ăn không hợp lệ.');
+    const id = await sequelize.transaction(async (transaction) => {
+      const recipe = await db.MonAn.findOne({
+        where: { idMonAn, trangThai: 1 },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!recipe) throw error(404, 'Món ăn không tồn tại.');
+      const steps = await db.BuocNau.findAll({
+        where: { idMonAn, phienBan: recipe.phienBan },
+        order: [['soThuTu', 'ASC']],
+        transaction,
+      });
+      if (!steps.length) throw error(409, 'Món ăn chưa có hướng dẫn nấu.');
+      const ingredients = await db.MonAnNguyenLieu.findAll({
+        where: { idMonAn },
+        include: [{ model: db.NguyenLieu, as: 'nguyenLieu' }],
+        transaction,
+      });
+      const history = await db.LichSuNau.create(
+        {
+          idNguoiDung: req.auth.idNguoiDung,
+          idMonAn,
+          trangThai: 'DANG_NAU',
+          buocHienTai: steps[0].soThuTu,
+          congThucSnapshot: {
+            ...recipe.toJSON(),
+            buocNaus: steps.map((s) => s.toJSON()),
+            nguyenLieus: ingredients.map((i) => i.toJSON()),
+          },
+        },
+        { transaction },
+      );
+      await db.ChiTietLichSuNau.bulkCreate(
+        steps.map((s) => ({ idLichSu: history.idLichSu, idBuocNau: s.idBuocNau, daHoanThanh: 0 })),
+        { transaction },
+      );
+      return history.idLichSu;
+    });
+    return sendSuccess(res, 201, 'Đã bắt đầu nấu', await fetchHistory(id));
+  }),
+  updateStep: asyncHandler(async (req, res) =>
+    sendSuccess(res, 200, 'Đã cập nhật bước nấu', await mutate(req, 'step')),
+  ),
+  finish: asyncHandler(async (req, res) =>
+    sendSuccess(res, 200, 'Đã hoàn thành', await mutate(req, 'finish')),
+  ),
+  cancel: asyncHandler(async (req, res) =>
+    sendSuccess(res, 200, 'Đã hủy phiên nấu', await mutate(req, 'cancel')),
+  ),
 };
-
-const LichSuNauController = {
-    listMine: asyncHandler(async (req, res) => {
-        const { page, limit, offset } = getPagination(req.query);
-        const where = {
-            idNguoiDung: req.auth.idNguoiDung
-        };
-
-        if (req.query.trangThai) {
-            where.trangThai = req.query.trangThai;
-        }
-
-        const result = await db.LichSuNau.findAndCountAll({
-            where,
-            include: [
-                {
-                    model: db.MonAn,
-                    as: "monAn",
-                    attributes: ["idMonAn", "tenMonAn", "anhDaiDien", "tongThoiGian"]
-                }
-            ],
-            order: [["thoiGianBatDau", "DESC"]],
-            limit,
-            offset
-        });
-
-        return sendSuccess(
-            res,
-            200,
-            "Cooking history loaded",
-            result.rows,
-            getPagingMeta(result.count, page, limit)
-        );
-    }),
-
-    detail: asyncHandler(async (req, res) => {
-        const history = await fetchHistory(req.params.id);
-
-        if (!history) {
-            return sendError(res, 404, "Cooking history not found");
-        }
-
-        if (!canAccessHistory(req, history)) {
-            return sendError(res, 403, "You cannot access this cooking history");
-        }
-
-        return sendSuccess(res, 200, "Cooking history loaded", history);
-    }),
-
-    start: asyncHandler(async (req, res) => {
-        const idMonAn = req.body.idMonAn || req.params.idMonAn || req.params.id;
-
-        if (!idMonAn) {
-            return sendError(res, 400, "idMonAn is required");
-        }
-
-        const monAn = await db.MonAn.findOne({
-            where: {
-                idMonAn,
-                trangThai: 1
-            }
-        });
-
-        if (!monAn) {
-            return sendError(res, 404, "Recipe not found");
-        }
-
-        const steps = await db.BuocNau.findAll({
-            where: {
-                idMonAn
-            },
-            order: [["soThuTu", "ASC"]]
-        });
-
-        const transaction = await sequelize.transaction();
-
-        try {
-            const history = await db.LichSuNau.create(
-                {
-                    idNguoiDung: req.auth.idNguoiDung,
-                    idMonAn,
-                    trangThai: "DANG_NAU",
-                    buocHienTai: steps.length > 0 ? steps[0].soThuTu : 1
-                },
-                { transaction }
-            );
-
-            if (steps.length > 0) {
-                await db.ChiTietLichSuNau.bulkCreate(
-                    steps.map((step) => ({
-                        idLichSu: history.idLichSu,
-                        idBuocNau: step.idBuocNau,
-                        daHoanThanh: 0
-                    })),
-                    { transaction }
-                );
-            }
-
-            await transaction.commit();
-
-            return sendSuccess(
-                res,
-                201,
-                "Cooking started",
-                await fetchHistory(history.idLichSu)
-            );
-        } catch (error) {
-            await transaction.rollback();
-            throw error;
-        }
-    }),
-
-    updateStep: asyncHandler(async (req, res) => {
-        const history = await db.LichSuNau.findByPk(req.params.id);
-
-        if (!history) {
-            return sendError(res, 404, "Cooking history not found");
-        }
-
-        if (!canAccessHistory(req, history)) {
-            return sendError(res, 403, "You cannot update this cooking history");
-        }
-
-        const step = await db.BuocNau.findOne({
-            where: {
-                idBuocNau: req.params.idBuocNau,
-                idMonAn: history.idMonAn
-            }
-        });
-
-        if (!step) {
-            return sendError(res, 404, "Cooking step not found in this recipe");
-        }
-
-        const daHoanThanh = parseBoolean(req.body.daHoanThanh, true);
-
-        const [detail] = await db.ChiTietLichSuNau.findOrCreate({
-            where: {
-                idLichSu: history.idLichSu,
-                idBuocNau: step.idBuocNau
-            },
-            defaults: {
-                idLichSu: history.idLichSu,
-                idBuocNau: step.idBuocNau
-            }
-        });
-
-        await detail.update({
-            daHoanThanh: daHoanThanh ? 1 : 0,
-            thoiGianHoanThanh: daHoanThanh ? new Date() : null
-        });
-
-        await syncHistoryProgress(history);
-
-        return sendSuccess(
-            res,
-            200,
-            "Cooking step updated",
-            await fetchHistory(history.idLichSu)
-        );
-    }),
-
-    finish: asyncHandler(async (req, res) => {
-        const history = await db.LichSuNau.findByPk(req.params.id);
-
-        if (!history) {
-            return sendError(res, 404, "Cooking history not found");
-        }
-
-        if (!canAccessHistory(req, history)) {
-            return sendError(res, 403, "You cannot update this cooking history");
-        }
-
-        const steps = await db.BuocNau.findAll({
-            where: {
-                idMonAn: history.idMonAn
-            }
-        });
-
-        if (steps.length > 0) {
-            await db.ChiTietLichSuNau.bulkCreate(
-                steps.map((step) => ({
-                    idLichSu: history.idLichSu,
-                    idBuocNau: step.idBuocNau,
-                    daHoanThanh: 0
-                })),
-                {
-                    ignoreDuplicates: true
-                }
-            );
-
-            await db.ChiTietLichSuNau.update(
-                {
-                    daHoanThanh: 1,
-                    thoiGianHoanThanh: new Date()
-                },
-                {
-                    where: {
-                        idLichSu: history.idLichSu
-                    }
-                }
-            );
-        }
-
-        const lastStepOrder = steps.reduce((max, step) => Math.max(max, step.soThuTu), 1);
-
-        await history.update({
-            trangThai: "HOAN_THANH",
-            thoiGianKetThuc: new Date(),
-            buocHienTai: lastStepOrder
-        });
-
-        return sendSuccess(res, 200, "Cooking finished", await fetchHistory(history.idLichSu));
-    }),
-
-    cancel: asyncHandler(async (req, res) => {
-        const history = await db.LichSuNau.findByPk(req.params.id);
-
-        if (!history) {
-            return sendError(res, 404, "Cooking history not found");
-        }
-
-        if (!canAccessHistory(req, history)) {
-            return sendError(res, 403, "You cannot update this cooking history");
-        }
-
-        await history.update({
-            trangThai: "DA_HUY",
-            thoiGianKetThuc: new Date()
-        });
-
-        return sendSuccess(res, 200, "Cooking cancelled", await fetchHistory(history.idLichSu));
-    })
-};
-
-module.exports = LichSuNauController;

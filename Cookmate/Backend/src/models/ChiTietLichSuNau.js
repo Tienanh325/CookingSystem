@@ -1,40 +1,41 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("../config/database");
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
 
 const ChiTietLichSuNau = sequelize.define(
-    "ChiTietLichSuNau",
-    {
-        idChiTiet: {
-            type: DataTypes.INTEGER,
-            primaryKey: true,
-            autoIncrement: true
-        },
-
-        idLichSu: {
-            type: DataTypes.INTEGER,
-            allowNull: false
-        },
-
-        idBuocNau: {
-            type: DataTypes.INTEGER,
-            allowNull: false
-        },
-
-        daHoanThanh: {
-            type: DataTypes.TINYINT,
-            allowNull: false,
-            defaultValue: 0
-        },
-
-        thoiGianHoanThanh: {
-            type: DataTypes.DATE,
-            allowNull: true
-        }
+  'ChiTietLichSuNau',
+  {
+    idChiTiet: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
     },
-    {
-        tableName: "ChiTietLichSuNau",
-        timestamps: false
-    }
+
+    idLichSu: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+
+    idBuocNau: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+
+    daHoanThanh: {
+      type: DataTypes.TINYINT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+
+    thoiGianHoanThanh: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  },
+  {
+    tableName: 'ChiTietLichSuNau',
+    indexes: [{ unique: true, fields: ['idLichSu', 'idBuocNau'], name: 'uq_history_step' }],
+    timestamps: false,
+  },
 );
 
 module.exports = ChiTietLichSuNau;

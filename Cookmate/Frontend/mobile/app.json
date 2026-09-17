@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Cookmate",
+    "slug": "cookmate-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "Cho phép Cookmate dùng Face ID để mở khóa phiên đăng nhập."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Cho phép Cookmate dùng Face ID để xác thực trên thiết bị."
+        }
+      ]
+    ],
+    "ios": {
+      "bundleIdentifier": "com.cookmate.mobile",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.cookmate.mobile"
+    },
+    "scheme": "cookmate"
+  }
+}

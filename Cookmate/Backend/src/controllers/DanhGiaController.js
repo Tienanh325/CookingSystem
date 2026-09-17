@@ -1,173 +1,112 @@
-const { fn, col } = require("sequelize");
-
-const db = require("../models");
-const asyncHandler = require("../utils/asyncHandler");
-const { sendError, sendSuccess } = require("../utils/apiResponse");
-const { getPagination, getPagingMeta, normalizeText } = require("../utils/query");
-
-const updateRecipeRating = async (idMonAn) => {
-    const stats = await db.DanhGia.findOne({
-        attributes: [
-            [fn("AVG", col("soSao")), "averageRating"]
-        ],
-        where: {
-            idMonAn,
-            trangThai: 1
+const { fn, col } = require('sequelize');
+const sequelize = require('../config/database');
+const db = require('../models');
+const asyncHandler = require('../utils/asyncHandler');
+const { sendSuccess } = require('../utils/apiResponse');
+const error = require('../utils/httpError');
+const { getPagination, getPagingMeta } = require('../utils/query');
+async function updateRating(idMonAn, transaction) {
+  const stats = await db.DanhGia.findOne({
+    attributes: [[fn('AVG', col('soSao')), 'averageRating']],
+    where: { idMonAn, trangThai: 1 },
+    raw: true,
+    transaction,
+  });
+  const averageRating = Number(Number(stats.averageRating || 0).toFixed(2));
+  await db.MonAn.update({ diemDanhGia: averageRating }, { where: { idMonAn }, transaction });
+  return averageRating;
+}
+module.exports = {
+  listByRecipe: asyncHandler(async (req, res) => {
+    const { page, limit, offset } = getPagination(req.query);
+    const idMonAn = req.params.id;
+    if (!(await db.MonAn.findOne({ where: { idMonAn, trangThai: 1 } })))
+      throw error(404, 'Món ăn không tồn tại.');
+    const r = await db.DanhGia.findAndCountAll({
+      where: { idMonAn, trangThai: 1 },
+      include: [
+        {
+          model: db.NguoiDung,
+          as: 'nguoiDung',
+          attributes: ['idNguoiDung', 'hoTen', 'anhDaiDien'],
         },
-        raw: true
+      ],
+      order: [['ngayDanhGia', 'DESC'], ['idDanhGia', 'DESC']],
+      limit,
+      offset,
     });
-
-    const averageRating = Number(stats.averageRating || 0).toFixed(2);
-
-    await db.MonAn.update(
+    return sendSuccess(res, 200, 'Đánh giá', r.rows, getPagingMeta(r.count, page, limit));
+  }),
+  listMine: asyncHandler(async (req, res) => {
+    const { page, limit, offset } = getPagination(req.query);
+    const r = await db.DanhGia.findAndCountAll({
+      where: { idNguoiDung: req.auth.idNguoiDung, trangThai: 1 },
+      include: [
         {
-            diemDanhGia: averageRating,
-            ngayCapNhat: new Date()
+          model: db.MonAn,
+          as: 'monAn',
+          attributes: ['idMonAn', 'tenMonAn', 'anhDaiDien', 'diemDanhGia'],
         },
-        {
-            where: {
-                idMonAn
-            }
-        }
+      ],
+      order: [['ngayDanhGia', 'DESC'], ['idDanhGia', 'DESC']],
+      limit,
+      offset,
+    });
+    return sendSuccess(res, 200, 'Đánh giá của bạn', r.rows, getPagingMeta(r.count, page, limit));
+  }),
+  upsertForRecipe: asyncHandler(async (req, res) => {
+    const data = await sequelize.transaction(
+      { isolationLevel: 'READ COMMITTED' },
+      async (transaction) => {
+        const idMonAn = Number(req.params.id);
+        const recipe = await db.MonAn.findOne({
+          where: { idMonAn, trangThai: 1 },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+        if (!recipe) throw error(404, 'Món ăn không tồn tại.');
+        let review = await db.DanhGia.findOne({
+          where: { idMonAn, idNguoiDung: req.auth.idNguoiDung },
+          transaction,
+        });
+        const payload = {
+          soSao: req.body.soSao,
+          noiDung: req.body.noiDung || null,
+          trangThai: 1,
+          ngayCapNhat: new Date(),
+        };
+        if (review) await review.update(payload, { transaction });
+        else
+          review = await db.DanhGia.create(
+            { ...payload, idMonAn, idNguoiDung: req.auth.idNguoiDung },
+            { transaction },
+          );
+        return { review, averageRating: await updateRating(idMonAn, transaction) };
+      },
     );
-
-    return Number(averageRating);
+    return sendSuccess(res, 200, 'Đã lưu đánh giá', data);
+  }),
+  remove: asyncHandler(async (req, res) => {
+    const original = await db.DanhGia.findByPk(req.params.id);
+    if (!original) throw error(404, 'Đánh giá không tồn tại.');
+    if (!req.auth.isAdmin && original.idNguoiDung !== req.auth.idNguoiDung)
+      throw error(403, 'Bạn không có quyền xóa đánh giá này.');
+    const averageRating = await sequelize.transaction(
+      { isolationLevel: 'READ COMMITTED' },
+      async (transaction) => {
+        await db.MonAn.findByPk(original.idMonAn, { transaction, lock: transaction.LOCK.UPDATE });
+        await db.DanhGia.destroy({ where: { idDanhGia: original.idDanhGia }, transaction });
+        if (req.auth.isAdmin)
+          await require('../utils/audit')(
+            req,
+            'DELETE',
+            'DanhGia',
+            original.idDanhGia,
+            transaction,
+          );
+        return updateRating(original.idMonAn, transaction);
+      },
+    );
+    return sendSuccess(res, 200, 'Đã xóa đánh giá', { averageRating });
+  }),
 };
-
-const canModifyReview = (req, review) => {
-    return req.auth.isAdmin || Number(review.idNguoiDung) === Number(req.auth.idNguoiDung);
-};
-
-const DanhGiaController = {
-    listByRecipe: asyncHandler(async (req, res) => {
-        const { page, limit, offset } = getPagination(req.query);
-        const result = await db.DanhGia.findAndCountAll({
-            where: {
-                idMonAn: req.params.idMonAn || req.params.id,
-                trangThai: 1
-            },
-            include: [
-                {
-                    model: db.NguoiDung,
-                    as: "nguoiDung",
-                    attributes: ["idNguoiDung", "hoTen", "anhDaiDien"]
-                }
-            ],
-            order: [["ngayDanhGia", "DESC"]],
-            limit,
-            offset
-        });
-
-        return sendSuccess(
-            res,
-            200,
-            "Reviews loaded",
-            result.rows,
-            getPagingMeta(result.count, page, limit)
-        );
-    }),
-
-    listMine: asyncHandler(async (req, res) => {
-        const { page, limit, offset } = getPagination(req.query);
-        const result = await db.DanhGia.findAndCountAll({
-            where: {
-                idNguoiDung: req.auth.idNguoiDung
-            },
-            include: [
-                {
-                    model: db.MonAn,
-                    as: "monAn",
-                    attributes: ["idMonAn", "tenMonAn", "anhDaiDien", "diemDanhGia"]
-                }
-            ],
-            order: [["ngayDanhGia", "DESC"]],
-            limit,
-            offset
-        });
-
-        return sendSuccess(
-            res,
-            200,
-            "My reviews loaded",
-            result.rows,
-            getPagingMeta(result.count, page, limit)
-        );
-    }),
-
-    upsertForRecipe: asyncHandler(async (req, res) => {
-        const idMonAn = req.params.idMonAn || req.params.id;
-        const soSao = Number.parseInt(req.body.soSao, 10);
-
-        if (!Number.isInteger(soSao) || soSao < 1 || soSao > 5) {
-            return sendError(res, 400, "soSao must be between 1 and 5");
-        }
-
-        const monAn = await db.MonAn.findOne({
-            where: {
-                idMonAn,
-                trangThai: 1
-            }
-        });
-
-        if (!monAn) {
-            return sendError(res, 404, "Recipe not found");
-        }
-
-        const [review, created] = await db.DanhGia.findOrCreate({
-            where: {
-                idNguoiDung: req.auth.idNguoiDung,
-                idMonAn
-            },
-            defaults: {
-                idNguoiDung: req.auth.idNguoiDung,
-                idMonAn,
-                soSao,
-                noiDung: normalizeText(req.body.noiDung) || null,
-                trangThai: 1
-            }
-        });
-
-        if (!created) {
-            await review.update({
-                soSao,
-                noiDung: normalizeText(req.body.noiDung) || null,
-                trangThai: 1,
-                ngayCapNhat: new Date()
-            });
-        }
-
-        const averageRating = await updateRecipeRating(idMonAn);
-
-        return sendSuccess(
-            res,
-            created ? 201 : 200,
-            created ? "Review created" : "Review updated",
-            {
-                review,
-                averageRating
-            }
-        );
-    }),
-
-    remove: asyncHandler(async (req, res) => {
-        const review = await db.DanhGia.findByPk(req.params.id);
-
-        if (!review) {
-            return sendError(res, 404, "Review not found");
-        }
-
-        if (!canModifyReview(req, review)) {
-            return sendError(res, 403, "You cannot delete this review");
-        }
-
-        const idMonAn = review.idMonAn;
-        await review.destroy();
-        const averageRating = await updateRecipeRating(idMonAn);
-
-        return sendSuccess(res, 200, "Review deleted", {
-            averageRating
-        });
-    })
-};
-
-module.exports = DanhGiaController;

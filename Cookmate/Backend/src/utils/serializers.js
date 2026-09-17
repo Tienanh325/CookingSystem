@@ -1,17 +1,17 @@
 const sanitizeUser = (user) => {
-    if (!user) {
-        return null;
-    }
+  if (!user) {
+    return null;
+  }
 
-    const plainUser = typeof user.get === "function"
-        ? user.get({ plain: true })
-        : { ...user };
+  const plainUser = typeof user.get === 'function' ? user.get({ plain: true }) : { ...user };
 
-    delete plainUser.matKhau;
+  plainUser.hasPassword = Boolean(plainUser.matKhau);
+  delete plainUser.matKhau;
+  delete plainUser.tokenVersion;
 
-    return plainUser;
+  return plainUser;
 };
 
 module.exports = {
-    sanitizeUser
+  sanitizeUser,
 };
