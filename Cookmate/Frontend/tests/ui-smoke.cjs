@@ -17,7 +17,6 @@ const dbName = `cookmate_ui_${Date.now()}_${crypto.randomBytes(3).toString('hex'
 process.env.DB_NAME = dbName;
 process.env.JWT_SECRET = crypto.randomBytes(48).toString('hex');
 process.env.NODE_ENV = 'test';
-process.env.OTP_DELIVERY = 'local';
 let connection,
   sequelize,
   server,
@@ -279,22 +278,9 @@ async function main() {
   });
   assert.equal(cooked, 1);
   await mobile.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
-  await mobile.getByRole('tab', { name: 'Điện thoại / OTP', exact: true }).click();
-  await expect(mobile.getByRole('button', { name: 'Đăng nhập bằng Zalo', exact: true })).toBeDisabled();
-  await mobile.getByLabel('Số điện thoại', { exact: true }).fill('0912345690');
-  await mobile.screenshot({ path: path.join(out, 'mobile-phone-login.png'), fullPage: true });
-  await mobile.getByRole('button', { name: 'Nhận mã OTP xác thực', exact: true }).click();
-  await expect(mobile.getByLabel('Mã OTP', { exact: true })).toBeVisible();
-  await mobile.getByLabel('Mã OTP', { exact: true }).fill('000000');
-  await mobile.getByRole('button', { name: 'Xác thực & Tiếp tục', exact: true }).click();
-  await expect(mobile.getByText('Mã OTP không đúng.', { exact: true })).toBeVisible();
-  await mobile.screenshot({ path: path.join(out, 'mobile-otp.png'), fullPage: true });
-  const otpPreview = JSON.parse(fs.readFileSync(path.join(backend, '.otp-test-preview.local'), 'utf8'));
-  await mobile.getByLabel('Mã OTP', { exact: true }).fill(otpPreview.code);
-  await mobile.getByRole('button', { name: 'Xác thực & Tiếp tục', exact: true }).click();
-  await expect(mobile.getByText('Khách hàng Cookmate', { exact: true })).toBeVisible();
-  await expect(mobile.getByRole('button', { name: 'Đổi mật khẩu', exact: true })).toHaveCount(0);
-  console.log('Mobile OTP: phone entry, wrong code, verify, new customer session PASS.');
+  await expect(mobile.getByLabel('Email', { exact: true })).toBeVisible();
+  await expect(mobile.getByRole('tab', { name: 'Điện thoại / OTP', exact: true })).toHaveCount(0);
+  await expect(mobile.getByText(/Face ID|Vân tay|Nhận mã OTP/)).toHaveCount(0);
   assert.deepEqual(errors, []);
   console.log(
     'Mobile web UI: guest browsing, registration, favorite, cooking, review/comment, history, notifications, profile and logout passed.',
@@ -334,7 +320,6 @@ main()
     process.exitCode = 1;
   })
   .finally(async () => {
-    await fs.promises.unlink(path.join(backend, '.otp-test-preview.local')).catch(() => {});
     if (browser) await browser.close();
     if (vite) vite.kill();
     if (server) {

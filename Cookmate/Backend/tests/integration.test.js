@@ -80,9 +80,6 @@ before(async () => {
   }
 });
 after(async () => {
-  await require('fs/promises')
-    .unlink(path.join(__dirname, '../.otp-test-preview.local'))
-    .catch(() => {});
   if (server) await new Promise((r) => server.close(r));
   if (sequelize) await sequelize.close();
   if (connection) {
@@ -92,85 +89,14 @@ after(async () => {
   }
 });
 
-test('phone OTP: validation, cooldown, one-time use, no profile-phone takeover', async () => {
-  process.env.OTP_DELIVERY = 'local';
-  const phone = '0912345678';
-  const oldUser = await db.NguoiDung.findOne({ where: { email: 'user@test.local' } });
-  await oldUser.update({ soDienThoai: phone });
-  assert.equal((await request('POST', '/auth/otp/request', { phone: 'invalid' })).status, 400);
-  const start = await request('POST', '/auth/otp/request', { phone, name: 'OTP Customer' });
-  assert.equal(start.status, 200);
-  assert.equal(start.data.code, undefined);
-  assert.equal((await request('POST', '/auth/otp/request', { phone })).status, 429);
-  const preview = JSON.parse(
-    await require('fs/promises').readFile(
-      path.join(__dirname, '../.otp-test-preview.local'),
-      'utf8',
-    ),
-  );
-  const result = await request('POST', '/auth/otp/verify', {
-    challengeId: start.data.challengeId,
-    code: preview.code,
-  });
-  assert.equal(result.status, 200);
-  assert.notEqual(result.data.user.idNguoiDung, oldUser.idNguoiDung);
-  assert.equal(result.data.user.email, null);
-  assert.equal(result.data.user.hasPassword, false);
-  assert.equal(result.data.user.vaiTro.tenVaiTro, 'USER');
-  assert.equal(result.data.user.soDienThoai, '+84912345678');
-  assert.equal((await request('GET', '/auth/me', undefined, result.data.token)).status, 200);
-  assert.equal(
-    (
-      await request('POST', '/auth/otp/verify', {
-        challengeId: start.data.challengeId,
-        code: preview.code,
-      })
-    ).status,
-    400,
-  );
-  await oldUser.update({ soDienThoai: null });
+test('retired phone OTP endpoints are unavailable', async () => {
+  const methods = await request('GET', '/auth/methods');
+  assert.equal(methods.status, 200);
+  assert.equal(methods.data.phone, undefined);
+  assert.equal(methods.data.localOtp, undefined);
+  assert.equal((await request('POST', '/auth/otp/request', { phone: '0912345678' })).status, 404);
+  assert.equal((await request('POST', '/auth/otp/verify', { challengeId: crypto.randomUUID(), code: '123456' })).status, 404);
 });
-
-test('OTP rejects five wrong attempts, expiration, blocked users and production local mode', async () => {
-  const service = require('../src/services/customerAuth');
-  async function begin(phone) {
-    const start = await service.requestOtp(phone);
-    const preview = JSON.parse(
-      await require('fs/promises').readFile(
-        path.join(__dirname, '../.otp-test-preview.local'),
-        'utf8',
-      ),
-    );
-    return { ...start, code: preview.code };
-  }
-  const a = await begin('0912345679');
-  for (let i = 0; i < 5; i++) await assert.rejects(service.verifyOtp(a.challengeId, '000000'));
-  await assert.rejects(service.verifyOtp(a.challengeId, a.code));
-  assert.equal((await db.AuthChallenge.findByPk(a.challengeId)).attempts, 5);
-  const b = await begin('0912345680');
-  await db.AuthChallenge.update(
-    { expiresAt: new Date(Date.now() - 1000) },
-    { where: { id: b.challengeId } },
-  );
-  await assert.rejects(service.verifyOtp(b.challengeId, b.code));
-  const c = await begin('0912345681');
-  const first = await service.verifyOtp(c.challengeId, c.code);
-  await db.NguoiDung.update({ trangThai: 0 }, { where: { idNguoiDung: first.user.idNguoiDung } });
-  await db.AuthChallenge.update(
-    { createdAt: new Date(Date.now() - 61000) },
-    { where: { id: c.challengeId } },
-  );
-  const again = await begin('0912345681');
-  await assert.rejects(service.verifyOtp(again.challengeId, again.code), /khóa/);
-  process.env.NODE_ENV = 'production';
-  try {
-    assert.equal(service.capabilities().localOtp, false);
-    await assert.rejects(service.verifyOtp(again.challengeId, again.code));
-  } finally {
-    process.env.NODE_ENV = 'test';
-  }
-});
-
 test('OAuth validates state, redirect, signed identity, proof key and one-time ticket', async () => {
   const service = require('../src/services/customerAuth');
   process.env.AUTH_PUBLIC_URL = 'https://cookmate.example';

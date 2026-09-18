@@ -27,23 +27,6 @@ router.get(
   wrap(() => service.capabilities()),
 );
 router.post(
-  '/otp/request',
-  limit(10, 60),
-  validate(
-    z.object({
-      phone: z.string().min(9).max(25),
-      name: z.string().trim().min(1).max(100).optional(),
-    }),
-  ),
-  wrap((req) => service.requestOtp(req.body.phone, req.body.name)),
-);
-router.post(
-  '/otp/verify',
-  limit(30, 15),
-  validate(z.object({ challengeId: z.uuid(), code: z.string().regex(/^\d{6}$/) })),
-  wrap((req) => service.verifyOtp(req.body.challengeId, req.body.code)),
-);
-router.post(
   '/oauth/start',
   limit(30, 15),
   validate(

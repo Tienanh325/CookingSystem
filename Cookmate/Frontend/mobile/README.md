@@ -19,7 +19,7 @@ Mở QR bằng Expo Go tương thích SDK của dự án; cho phép kết nối 
 
 ## Chức năng
 
-Đăng nhập có tab Email/mật khẩu và Điện thoại/OTP, màn xác thực 6 chữ số, gửi lại mã; Google/Apple bật theo cấu hình backend. Bật Face ID/vân tay trong hồ sơ cần development build trên điện thoại. Xem [hướng dẫn xác thực](../../Backend/CUSTOMER-AUTH.md); Zalo hiện chưa khả dụng. Khi thử local OTP, mã nằm ở `Backend/.otp-preview.local` sau khi yêu cầu, không gửi SMS thật.
+Đăng nhập bằng email/mật khẩu; Google/Apple bật theo cấu hình backend. Xem [hướng dẫn xác thực](../../Backend/CUSTOMER-AUTH.md); Zalo hiện chưa khả dụng. Đã bỏ đăng nhập điện thoại/OTP và Face ID/vân tay.
 
 Khám phá, yêu thích, lịch sử và thông báo có phân trang trước/sau, tổng kết quả và chọn 5/10/20 mục (mặc định 5). Đổi trang cuộn lên đầu danh sách; đổi số mục quay về trang 1. Bình luận và đánh giá phân trang riêng, 5 mục/trang. Sau xóa, trang vượt quá tổng số trang tự điều chỉnh về trang hợp lệ.
 

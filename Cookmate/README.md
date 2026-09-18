@@ -32,7 +32,7 @@ Tài khoản quản trị được bootstrap bằng `seed`; nếu không chỉ �
 
 Nhận xét hai tài liệu phân tích cũ và đối chiếu với code hiện tại: [ANALYSIS-FEEDBACK.md](ANALYSIS-FEEDBACK.md).
 
-Đăng nhập khách hàng bằng điện thoại/OTP, Google, Apple và mở khóa bằng sinh trắc học: xem [trạng thái và cấu hình](Backend/CUSTOMER-AUTH.md). OTP hiện thử cục bộ; Google/Apple cần cấu hình nhà cung cấp, Zalo chưa tích hợp.
+Đăng nhập khách hàng bằng email/mật khẩu và Google/Apple: xem [trạng thái và cấu hình](Backend/CUSTOMER-AUTH.md). Google/Apple cần cấu hình nhà cung cấp, Zalo chưa tích hợp.
 
 ## Phạm vi giao diện
 

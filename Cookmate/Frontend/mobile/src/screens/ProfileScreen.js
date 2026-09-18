@@ -5,7 +5,7 @@ import { api } from '../services/api'
 import { Button, Field, Header, Icon, LoginPrompt, Message, Screen } from '../components/ui'
 import { colors, styles as s } from '../theme'
 export default function ProfileScreen({ navigation }) {
-  const { user, logout, sessionError, biometricEnabled, enableBiometric, lock } = useAuth(),
+  const { user, logout, sessionError } = useAuth(),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('')
   async function leave() {
@@ -78,24 +78,6 @@ export default function ProfileScreen({ navigation }) {
               ))}
           </View>
           <Message>{error}</Message>
-          <Button
-            title={biometricEnabled ? 'Khóa phiên trên thiết bị' : 'Bật Face ID / Vân tay'}
-            secondary
-            icon="finger-print-outline"
-            busy={busy}
-            onPress={async () => {
-              setError('')
-              setBusy(true)
-              try {
-                if (biometricEnabled) lock()
-                else await enableBiometric()
-              } catch (e) {
-                setError(e.message)
-              } finally {
-                setBusy(false)
-              }
-            }}
-          />
           <Button
             title="Đăng xuất khỏi các thiết bị"
             secondary
