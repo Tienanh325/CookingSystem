@@ -1,31 +1,31 @@
 import { useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { useAuth } from '../context/AuthContext'
-import useResource from '../hooks/useResource'
-import { api, date } from '../services/api'
+import { useXacThuc } from '../nguCanh/NguCanhXacThuc'
+import useTaiNguyen from '../moc/useTaiNguyen'
+import { goiApi, dinhDangNgay } from '../dichVu/KetNoiApi'
 import {
-  Button,
-  Header,
-  Icon,
-  LoginPrompt,
-  Message,
-  Pager,
-  Screen,
-  State,
-} from '../components/ui'
-import { colors, styles as s } from '../theme'
-export default function NotificationsScreen() {
-  const { user } = useAuth(),
+  Nut,
+  DauTrang,
+  BieuTuong,
+  LoiMoiDangNhap,
+  ThongDiep,
+  PhanTrang,
+  ManHinh,
+  TrangThai,
+} from '../thanhPhan/GiaoDien'
+import { mauSac, kieuDang as s } from '../ChuDe'
+export default function ThongBao() {
+  const { nguoiDung } = useXacThuc(),
     [limit, setLimit] = useState(5),
     [page, setPage] = useState(1),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
-    r = useResource(`/thong-bao?page=${page}&limit=${limit}`, !!user)
-  async function read(id) {
+    r = useTaiNguyen(`/thong-bao?page=${page}&limit=${limit}`, !!nguoiDung)
+  async function read(id?: number) {
     setBusy(true)
     setError('')
     try {
-      await api(id ? `/thong-bao/${id}/read` : '/thong-bao/read-all', {
+      await goiApi(id ? `/thong-bao/${id}/read` : '/thong-bao/read-all', {
         method: 'PATCH',
         body: {},
       })
@@ -37,22 +37,22 @@ export default function NotificationsScreen() {
     }
   }
   return (
-    <Screen resetKey={`${page}:${limit}`} header={<Header back title="Thông báo" />}>
-      {!user ? (
-        <LoginPrompt />
+    <ManHinh resetKey={`${page}:${limit}`} header={<DauTrang back title="Thông báo" />}>
+      {!nguoiDung ? (
+        <LoiMoiDangNhap />
       ) : (
         <>
           <View style={[s.between, { marginBottom: 20 }]}>
             <Text style={s.heading}>Lời nhắn từ căn bếp</Text>
           </View>
-          <Button
+          <Nut
             secondary
             title="Đánh dấu tất cả đã đọc"
             busy={busy}
             onPress={() => read()}
           />
-          <Message>{error}</Message>
-          <State
+          <ThongDiep>{error}</ThongDiep>
+          <TrangThai
             {...r}
             reload={r.reload}
             empty={!r.data?.length}
@@ -74,11 +74,11 @@ export default function NotificationsScreen() {
                 ]}
               >
                 <View style={[s.row, { gap: 10, marginBottom: 10 }]}>
-                  <Icon
+                  <BieuTuong
                     name={
                       item.daDoc ? 'mail-open-outline' : 'mail-unread-outline'
                     }
-                    color={colors.accent}
+                    color={mauSac.accent}
                   />
                   <Text style={[s.heading, { fontSize: 16, flex: 1 }]}>
                     {item.thongBao.tieuDe}
@@ -86,12 +86,12 @@ export default function NotificationsScreen() {
                 </View>
                 <Text style={s.body}>{item.thongBao.noiDung}</Text>
                 <Text style={[s.small, { marginTop: 14 }]}>
-                  {date(item.thongBao.ngayTao)} ·{' '}
+                  {dinhDangNgay(item.thongBao.ngayTao)} ·{' '}
                   {item.daDoc ? 'Đã đọc' : 'Chạm để đánh dấu đã đọc'}
                 </Text>
               </Pressable>
             ))}
-          <Pager
+          <PhanTrang
             page={page}
             meta={r.meta}
             onChange={setPage}
@@ -101,6 +101,6 @@ export default function NotificationsScreen() {
           />
         </>
       )}
-    </Screen>
+    </ManHinh>
   )
 }

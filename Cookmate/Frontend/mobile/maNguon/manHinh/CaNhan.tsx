@@ -1,17 +1,17 @@
 import { useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
-import { useAuth } from '../context/AuthContext'
-import { api } from '../services/api'
-import { Button, Field, Header, Icon, LoginPrompt, Message, Screen } from '../components/ui'
-import { colors, styles as s } from '../theme'
-export default function ProfileScreen({ navigation }) {
-  const { user, logout, sessionError } = useAuth(),
+import { useXacThuc } from '../nguCanh/NguCanhXacThuc'
+import { goiApi } from '../dichVu/KetNoiApi'
+import { Nut, TruongNhap, DauTrang, BieuTuong, LoiMoiDangNhap, ThongDiep, ManHinh } from '../thanhPhan/GiaoDien'
+import { mauSac, kieuDang as s } from '../ChuDe'
+export default function CaNhan({ navigation }) {
+  const { nguoiDung, dangXuat, loiPhien } = useXacThuc(),
     [busy, setBusy] = useState(false),
     [error, setError] = useState('')
   async function leave() {
     setBusy(true)
     try {
-      await logout()
+      await dangXuat()
     } catch (e) {
       setError(e.message)
     } finally {
@@ -19,12 +19,12 @@ export default function ProfileScreen({ navigation }) {
     }
   }
   return (
-    <Screen header={<Header notifications />}>
-      {!user ? (
+    <ManHinh header={<DauTrang notifications />}>
+      {!nguoiDung ? (
         <>
           <Text style={[s.title, s.serif]}>Góc bếp của bạn</Text>
-          <Message>{sessionError}</Message>
-          <LoginPrompt />
+          <ThongDiep>{loiPhien}</ThongDiep>
+          <LoiMoiDangNhap />
         </>
       ) : (
         <>
@@ -40,21 +40,21 @@ export default function ProfileScreen({ navigation }) {
                 marginBottom: 15,
               }}
             >
-              <Text style={{ fontSize: 30, fontWeight: '700', color: colors.accent }}>
-                {user.hoTen?.charAt(0)}
+              <Text style={{ fontSize: 30, fontWeight: '700', color: mauSac.accent }}>
+                {nguoiDung.hoTen?.charAt(0)}
               </Text>
             </View>
-            <Text style={s.heading}>{user.hoTen}</Text>
-            <Text style={[s.muted, { marginTop: 6 }]}>{user.email || user.soDienThoai}</Text>
+            <Text style={s.heading}>{nguoiDung.hoTen}</Text>
+            <Text style={[s.muted, { marginTop: 6 }]}>{nguoiDung.email || nguoiDung.soDienThoai}</Text>
             <Text style={[s.badge, { alignSelf: 'center', marginTop: 15 }]}>Yêu bếp · Yêu nhà</Text>
           </View>
           <View style={[s.card, { padding: 0 }]}>
             {[
-              ['person-outline', 'Thông tin cá nhân', 'EditProfile'],
-              ['lock-closed-outline', 'Đổi mật khẩu', 'ChangePassword'],
-              ['notifications-outline', 'Thông báo', 'Notifications'],
+              ['person-outline', 'Thông tin cá nhân', 'SuaHoSo'],
+              ['lock-closed-outline', 'Đổi mật khẩu', 'DoiMatKhau'],
+              ['notifications-outline', 'Thông báo', 'ThongBao'],
             ]
-              .filter(([, , screen]) => screen !== 'ChangePassword' || user.hasPassword !== false)
+              .filter(([, , screen]) => screen !== 'DoiMatKhau' || nguoiDung.hasPassword !== false)
               .map(([icon, label, screen]) => (
                 <Pressable
                   accessibilityRole="button"
@@ -67,18 +67,18 @@ export default function ProfileScreen({ navigation }) {
                       padding: 20,
                       gap: 14,
                       borderBottomWidth: 1,
-                      borderBottomColor: colors.border,
+                      borderBottomColor: mauSac.border,
                     },
                   ]}
                 >
-                  <Icon name={icon} color={colors.accent} />
+                  <BieuTuong name={icon} color={mauSac.accent} />
                   <Text style={[s.body, { flex: 1 }]}>{label}</Text>
-                  <Icon name="chevron-forward" size={18} />
+                  <BieuTuong name="chevron-forward" size={18} />
                 </Pressable>
               ))}
           </View>
-          <Message>{error}</Message>
-          <Button
+          <ThongDiep>{error}</ThongDiep>
+          <Nut
             title="Đăng xuất khỏi các thiết bị"
             secondary
             icon="log-out-outline"
@@ -90,14 +90,14 @@ export default function ProfileScreen({ navigation }) {
           </Text>
         </>
       )}
-    </Screen>
+    </ManHinh>
   )
 }
-export function EditProfileScreen({ navigation, route }) {
-  const { user, setUser, clear } = useAuth(),
-    passwordMode = route.name === 'ChangePassword'
-  const [name, setName] = useState(user?.hoTen || ''),
-    [phone, setPhone] = useState(user?.soDienThoai || ''),
+export function ChinhSuaCaNhan({ navigation, route }) {
+  const { nguoiDung, datNguoiDung, xoaPhien } = useXacThuc(),
+    passwordMode = route.name === 'DoiMatKhau'
+  const [name, setName] = useState(nguoiDung?.hoTen || ''),
+    [phone, setPhone] = useState(nguoiDung?.soDienThoai || ''),
     [old, setOld] = useState(''),
     [next, setNext] = useState(''),
     [confirm, setConfirm] = useState(''),
@@ -112,18 +112,18 @@ export function EditProfileScreen({ navigation, route }) {
     setBusy(true)
     try {
       if (passwordMode) {
-        await api('/auth/change-password', {
+        await goiApi('/auth/change-password', {
           method: 'PATCH',
           body: { matKhauCu: old, matKhauMoi: next },
         })
-        await clear()
-        navigation.replace('Login')
+        await xoaPhien()
+        navigation.replace('DangNhap')
       } else {
-        const r = await api('/auth/me', {
+        const r = await goiApi('/auth/me', {
           method: 'PATCH',
           body: { hoTen: name, soDienThoai: phone },
         })
-        setUser(r.data)
+        datNguoiDung(r.data)
         navigation.goBack()
       }
     } catch (e) {
@@ -133,10 +133,10 @@ export function EditProfileScreen({ navigation, route }) {
     }
   }
   return (
-    <Screen header={<Header back title={passwordMode ? 'Đổi mật khẩu' : 'Thông tin cá nhân'} />}>
-      <Message>{error}</Message>
-      {!user ? (
-        <LoginPrompt />
+    <ManHinh header={<DauTrang back title={passwordMode ? 'Đổi mật khẩu' : 'Thông tin cá nhân'} />}>
+      <ThongDiep>{error}</ThongDiep>
+      {!nguoiDung ? (
+        <LoiMoiDangNhap />
       ) : (
         <>
           {passwordMode ? (
@@ -144,14 +144,14 @@ export function EditProfileScreen({ navigation, route }) {
               <Text style={[s.muted, { marginBottom: 24 }]}>
                 Sau khi đổi mật khẩu, bạn cần đăng nhập lại trên các thiết bị.
               </Text>
-              <Field
+              <TruongNhap
                 label="Mật khẩu hiện tại"
                 secureTextEntry
                 value={old}
                 onChangeText={setOld}
                 autoComplete="current-password"
               />
-              <Field
+              <TruongNhap
                 label="Mật khẩu mới"
                 secureTextEntry
                 value={next}
@@ -159,7 +159,7 @@ export function EditProfileScreen({ navigation, route }) {
                 autoComplete="new-password"
                 placeholder="Ít nhất 8 ký tự"
               />
-              <Field
+              <TruongNhap
                 label="Xác nhận mật khẩu mới"
                 secureTextEntry
                 value={confirm}
@@ -169,9 +169,9 @@ export function EditProfileScreen({ navigation, route }) {
             </>
           ) : (
             <>
-              <Field label="Họ và tên" value={name} onChangeText={setName} maxLength={100} />
-              <Field label="Email" value={user.email} editable={false} />
-              <Field
+              <TruongNhap label="Họ và tên" value={name} onChangeText={setName} maxLength={100} />
+              <TruongNhap label="Email" value={nguoiDung.email} editable={false} />
+              <TruongNhap
                 label="Số điện thoại"
                 value={phone}
                 onChangeText={setPhone}
@@ -180,9 +180,9 @@ export function EditProfileScreen({ navigation, route }) {
               />
             </>
           )}
-          <Button title="Lưu thay đổi" busy={busy} onPress={save} />
+          <Nut title="Lưu thay đổi" busy={busy} onPress={save} />
         </>
       )}
-    </Screen>
+    </ManHinh>
   )
 }

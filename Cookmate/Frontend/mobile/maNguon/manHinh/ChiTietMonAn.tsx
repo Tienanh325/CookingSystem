@@ -1,31 +1,31 @@
 import { useEffect, useState } from 'react'
 import { Pressable, Text, TextInput, View } from 'react-native'
-import { useAuth } from '../context/AuthContext'
-import useResource from '../hooks/useResource'
-import { api, date } from '../services/api'
+import { useXacThuc } from '../nguCanh/NguCanhXacThuc'
+import useTaiNguyen from '../moc/useTaiNguyen'
+import { goiApi, dinhDangNgay } from '../dichVu/KetNoiApi'
 import {
-  Button,
-  FoodImage,
-  Header,
-  Icon,
-  Message,
-  Pager,
-  Screen,
-  SectionTitle,
-  State,
-} from '../components/ui'
-import { colors, styles as s } from '../theme'
-export default function RecipeDetailScreen({ route, navigation }) {
+  Nut,
+  AnhMonAn,
+  DauTrang,
+  BieuTuong,
+  ThongDiep,
+  PhanTrang,
+  ManHinh,
+  TieuDePhan,
+  TrangThai,
+} from '../thanhPhan/GiaoDien'
+import { mauSac, kieuDang as s } from '../ChuDe'
+export default function ChiTietMonAn({ route, navigation }) {
   const id = route.params.id,
-    { user } = useAuth(),
-    r = useResource(`/mon-an/${id}`),
-    favorite = useResource(`/mon-an/${id}/yeu-thich`, !!user)
+    { nguoiDung } = useXacThuc(),
+    r = useTaiNguyen(`/mon-an/${id}`),
+    favorite = useTaiNguyen(`/mon-an/${id}/yeu-thich`, !!nguoiDung)
   const [commentPage, setCommentPage] = useState(1),
     [reviewPage, setReviewPage] = useState(1)
-  const comments = useResource(
+  const comments = useTaiNguyen(
       `/mon-an/${id}/binh-luan?limit=5&page=${commentPage}`,
     ),
-    reviews = useResource(`/mon-an/${id}/danh-gia?limit=5&page=${reviewPage}`)
+    reviews = useTaiNguyen(`/mon-an/${id}/danh-gia?limit=5&page=${reviewPage}`)
   const [servings, setServings] = useState(1),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
@@ -39,8 +39,8 @@ export default function RecipeDetailScreen({ route, navigation }) {
     if (r.data) setServings(r.data.khauPhan)
   }, [r.data?.khauPhan])
   function requireUser() {
-    if (user) return true
-    navigation.navigate('Login')
+    if (nguoiDung) return true
+    navigation.navigate('DangNhap')
     return false
   }
   async function run(action) {
@@ -58,7 +58,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
   function toggleFavorite() {
     if (!requireUser()) return
     run(async () => {
-      await api(`/mon-an/${id}/yeu-thich`, {
+      await goiApi(`/mon-an/${id}/yeu-thich`, {
         method: favorite.data?.isFavorite ? 'DELETE' : 'POST',
         ...(favorite.data?.isFavorite ? {} : { body: {} }),
       })
@@ -68,17 +68,17 @@ export default function RecipeDetailScreen({ route, navigation }) {
   function start() {
     if (!requireUser()) return
     run(async () => {
-      const result = await api(`/mon-an/${id}/lich-su-nau`, {
+      const result = await goiApi(`/mon-an/${id}/lich-su-nau`, {
         method: 'POST',
         body: {},
       })
-      navigation.navigate('Cooking', { id: result.data.idLichSu })
+      navigation.navigate('NauAn', { id: result.data.idLichSu })
     })
   }
   function postReview() {
     if (!requireUser()) return
     run(async () => {
-      await api(`/mon-an/${id}/danh-gia`, {
+      await goiApi(`/mon-an/${id}/danh-gia`, {
         method: 'POST',
         body: { soSao: stars, noiDung: review },
       })
@@ -91,7 +91,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
     if (!requireUser()) return
     run(async () => {
       if (!comment.trim()) throw new Error('Hãy viết nội dung bình luận.')
-      await api(editing ? `/binh-luan/${editing}` : `/mon-an/${id}/binh-luan`, {
+      await goiApi(editing ? `/binh-luan/${editing}` : `/mon-an/${id}/binh-luan`, {
         method: editing ? 'PATCH' : 'POST',
         body: {
           noiDung: comment,
@@ -115,14 +115,14 @@ export default function RecipeDetailScreen({ route, navigation }) {
           marginLeft: child ? 20 : 0,
           paddingLeft: child ? 12 : 0,
           borderLeftWidth: child ? 2 : 0,
-          borderLeftColor: colors.border,
+          borderLeftColor: mauSac.border,
         }}
       >
         <View style={s.between}>
           <Text style={[s.body, { fontWeight: '600' }]}>
             {item.nguoiDung?.hoTen || 'Người dùng'}
           </Text>
-          <Text style={s.small}>{date(item.ngayBinhLuan)}</Text>
+          <Text style={s.small}>{dinhDangNgay(item.ngayBinhLuan)}</Text>
         </View>
         <Text style={[s.body, { fontSize: 13, marginVertical: 7 }]}>
           {item.noiDung}
@@ -141,7 +141,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
               <Text style={s.link}>Trả lời</Text>
             </Pressable>
           )}
-          {user?.idNguoiDung === item.idNguoiDung && (
+          {nguoiDung?.idNguoiDung === item.idNguoiDung && (
             <>
               <Pressable
                 accessibilityRole="button"
@@ -158,14 +158,14 @@ export default function RecipeDetailScreen({ route, navigation }) {
                 disabled={busy}
                 onPress={() =>
                   run(async () => {
-                    await api(`/binh-luan/${item.idBinhLuan}`, {
+                    await goiApi(`/binh-luan/${item.idBinhLuan}`, {
                       method: 'DELETE',
                     })
                     comments.reload()
                   })
                 }
               >
-                <Text style={[s.link, { color: colors.muted }]}>Xóa</Text>
+                <Text style={[s.link, { color: mauSac.muted }]}>Xóa</Text>
               </Pressable>
             </>
           )}
@@ -175,14 +175,14 @@ export default function RecipeDetailScreen({ route, navigation }) {
     )
   }
   return (
-    <Screen
-      header={<Header back title="Công thức món ngon" />}
+    <ManHinh
+      header={<DauTrang back title="Công thức món ngon" />}
       style={{ padding: 0, paddingBottom: 30 }}
     >
-      <State {...r} reload={r.reload} />
+      <TrangThai {...r} reload={r.reload} />
       {recipe && (
         <>
-          <FoodImage
+          <AnhMonAn
             uri={recipe.anhDaiDien || recipe.hinhAnhs?.[0]?.duongDan}
             style={{ height: 270 }}
           />
@@ -196,17 +196,17 @@ export default function RecipeDetailScreen({ route, navigation }) {
                 accessibilityLabel={
                   favorite.data?.isFavorite ? 'Bỏ yêu thích' : 'Lưu yêu thích'
                 }
-                disabled={busy || (!!user && favorite.loading)}
+                disabled={busy || (!!nguoiDung && favorite.loading)}
                 onPress={toggleFavorite}
                 style={{
                   padding: 8,
-                  backgroundColor: colors.soft,
+                  backgroundColor: mauSac.soft,
                   borderRadius: 25,
                 }}
               >
-                <Icon
+                <BieuTuong
                   name={favorite.data?.isFavorite ? 'heart' : 'heart-outline'}
-                  color={colors.accent}
+                  color={mauSac.accent}
                   size={24}
                 />
               </Pressable>
@@ -228,19 +228,19 @@ export default function RecipeDetailScreen({ route, navigation }) {
                 ['star', Number(recipe.diemDanhGia).toFixed(1)],
               ].map(([icon, label]) => (
                 <View key={icon} style={[s.row, { gap: 6 }]}>
-                  <Icon name={icon} size={17} color={colors.accent} />
+                  <BieuTuong name={icon} size={17} color={mauSac.accent} />
                   <Text style={s.small}>{label}</Text>
                 </View>
               ))}
             </View>
-            <Message>{error || favorite.error}</Message>
-            <Button
+            <ThongDiep>{error || favorite.error}</ThongDiep>
+            <Nut
               title="Bắt đầu nấu món này"
               icon="flame-outline"
               busy={busy}
               onPress={start}
             />
-            <SectionTitle title="Nguyên liệu chuẩn bị" />
+            <TieuDePhan title="Nguyên liệu chuẩn bị" />
             <View style={[s.card, { backgroundColor: '#fff7ee' }]}>
               <View style={[s.between, { marginBottom: 16 }]}>
                 <Text style={s.muted}>Khẩu phần</Text>
@@ -251,9 +251,9 @@ export default function RecipeDetailScreen({ route, navigation }) {
                     disabled={servings <= 1}
                     onPress={() => setServings(Math.max(1, servings - 1))}
                   >
-                    <Icon
+                    <BieuTuong
                       name="remove-circle-outline"
-                      color={colors.accent}
+                      color={mauSac.accent}
                       size={26}
                     />
                   </Pressable>
@@ -264,9 +264,9 @@ export default function RecipeDetailScreen({ route, navigation }) {
                     disabled={servings >= 100}
                     onPress={() => setServings(Math.min(100, servings + 1))}
                   >
-                    <Icon
+                    <BieuTuong
                       name="add-circle-outline"
-                      color={colors.accent}
+                      color={mauSac.accent}
                       size={26}
                     />
                   </Pressable>
@@ -280,7 +280,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
                     {
                       paddingVertical: 12,
                       borderTopWidth: 1,
-                      borderTopColor: colors.border,
+                      borderTopColor: mauSac.border,
                       gap: 12,
                     },
                   ]}
@@ -299,7 +299,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
                 </View>
               ))}
             </View>
-            <SectionTitle title="Các bước thực hiện" />
+            <TieuDePhan title="Các bước thực hiện" />
             {recipe.buocNaus.map((step, i) => (
               <View
                 key={step.idBuocNau}
@@ -310,7 +310,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
                     width: 29,
                     height: 29,
                     borderRadius: 15,
-                    backgroundColor: colors.accent,
+                    backgroundColor: mauSac.accent,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
@@ -330,7 +330,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
                     </Text>
                   )}
                   {!!step.anh && (
-                    <FoodImage
+                    <AnhMonAn
                       uri={step.anh}
                       style={{ marginTop: 12, borderRadius: 10 }}
                     />
@@ -338,8 +338,8 @@ export default function RecipeDetailScreen({ route, navigation }) {
                 </View>
               </View>
             ))}
-            <SectionTitle title="Đánh giá từ người nấu" />
-            <State
+            <TieuDePhan title="Đánh giá từ người nấu" />
+            <TrangThai
               {...reviews}
               reload={reviews.reload}
               empty={!reviews.data?.length}
@@ -359,13 +359,13 @@ export default function RecipeDetailScreen({ route, navigation }) {
                 {!!item.noiDung && (
                   <Text style={[s.body, { marginTop: 8 }]}>{item.noiDung}</Text>
                 )}
-                {user?.idNguoiDung === item.idNguoiDung && (
+                {nguoiDung?.idNguoiDung === item.idNguoiDung && (
                   <Pressable
                     accessibilityRole="button"
                     disabled={busy}
                     onPress={() =>
                       run(async () => {
-                        await api(`/danh-gia/${item.idDanhGia}`, {
+                        await goiApi(`/danh-gia/${item.idDanhGia}`, {
                           method: 'DELETE',
                         })
                         reviews.reload()
@@ -380,7 +380,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
                 )}
               </View>
             ))}
-            <Pager
+            <PhanTrang
               page={reviewPage}
               meta={reviews.meta}
               loading={reviews.loading}
@@ -398,7 +398,7 @@ export default function RecipeDetailScreen({ route, navigation }) {
                     accessibilityLabel={`${v} sao`}
                     onPress={() => setStars(v)}
                   >
-                    <Icon
+                    <BieuTuong
                       name={v <= stars ? 'star' : 'star-outline'}
                       color="#d79538"
                       size={30}
@@ -418,23 +418,23 @@ export default function RecipeDetailScreen({ route, navigation }) {
                 ]}
                 maxLength={5000}
               />
-              <Button
+              <Nut
                 title={
-                  user ? 'Gửi / cập nhật đánh giá' : 'Đăng nhập để đánh giá'
+                  nguoiDung ? 'Gửi / cập nhật đánh giá' : 'Đăng nhập để đánh giá'
                 }
                 secondary
                 busy={busy}
                 onPress={postReview}
               />
             </View>
-            <SectionTitle
+            <TieuDePhan
               title={`Bình luận (${comments.meta?.totalItems || 0})`}
             />
-            <State {...comments} reload={comments.reload} />
+            <TrangThai {...comments} reload={comments.reload} />
             <View style={{ marginBottom: 22 }}>
               {comments.data?.map((row) => commentItem(row))}
             </View>
-            <Pager
+            <PhanTrang
               page={commentPage}
               meta={comments.meta}
               loading={comments.loading}
@@ -469,11 +469,11 @@ export default function RecipeDetailScreen({ route, navigation }) {
                 { minHeight: 95, textAlignVertical: 'top', marginBottom: 15 },
               ]}
             />
-            <Message>{error}</Message>
-            <Message success>{success}</Message>
-            <Button
+            <ThongDiep>{error}</ThongDiep>
+            <ThongDiep success>{success}</ThongDiep>
+            <Nut
               title={
-                user
+                nguoiDung
                   ? editing
                     ? 'Lưu bình luận'
                     : 'Gửi bình luận'
@@ -486,6 +486,6 @@ export default function RecipeDetailScreen({ route, navigation }) {
           </View>
         </>
       )}
-    </Screen>
+    </ManHinh>
   )
 }

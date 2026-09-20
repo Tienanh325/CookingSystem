@@ -8,16 +8,16 @@ import {
   View,
 } from 'react-native'
 import {
-  Header,
-  Icon,
-  Pager,
-  RecipeCard,
-  Screen,
-  State,
-} from '../components/ui'
-import useResource from '../hooks/useResource'
-import { colors, styles as s } from '../theme'
-export default function ExploreScreen({ route }) {
+  DauTrang,
+  BieuTuong,
+  PhanTrang,
+  TheMonAn,
+  ManHinh,
+  TrangThai,
+} from '../thanhPhan/GiaoDien'
+import useTaiNguyen from '../moc/useTaiNguyen'
+import { mauSac, kieuDang as s } from '../ChuDe'
+export default function KhamPha({ route }) {
   const [query, setQuery] = useState(route.params?.q || ''),
     [search, setSearch] = useState(route.params?.q || ''),
     [category, setCategory] = useState(String(route.params?.category || '')),
@@ -34,8 +34,8 @@ export default function ExploreScreen({ route }) {
     setCategory(String(route.params?.category || ''))
     setPage(1)
   }, [route.params?.q, route.params?.category])
-  const categories = useResource('/danh-muc?limit=100'),
-    ingredients = useResource('/nguyen-lieu?limit=100'),
+  const categories = useTaiNguyen('/danh-muc?limit=100'),
+    ingredients = useTaiNguyen('/nguyen-lieu?limit=100'),
     path = useMemo(() => {
       const params = [
         `limit=${limit}`,
@@ -50,7 +50,7 @@ export default function ExploreScreen({ route }) {
         params.push(`nguyenLieuIds=${ingredientIds.join(',')}`)
       return `/mon-an?${params.join('&')}`
     }, [category, difficulty, ingredientIds, limit, maxTime, page, search, sort]),
-    r = useResource(path),
+    r = useTaiNguyen(path),
     filterCount =
       Number(Boolean(category)) +
       Number(Boolean(difficulty)) +
@@ -81,13 +81,13 @@ export default function ExploreScreen({ route }) {
     setPage(1)
   }
   return (
-    <Screen resetKey={`${page}:${limit}`}
-      header={<Header notifications />}
+    <ManHinh resetKey={`${page}:${limit}`}
+      header={<DauTrang notifications />}
       refreshControl={
         <RefreshControl
           refreshing={r.loading && !!r.data}
           onRefresh={r.reload}
-          tintColor={colors.accent}
+          tintColor={mauSac.accent}
         />
       }
     >
@@ -98,7 +98,7 @@ export default function ExploreScreen({ route }) {
       <View
         style={[s.input, s.row, { gap: 10, padding: 0, paddingHorizontal: 14 }]}
       >
-        <Icon name="search" />
+        <BieuTuong name="search" />
         <TextInput
           accessibilityLabel="Tìm món ăn"
           value={query}
@@ -111,7 +111,7 @@ export default function ExploreScreen({ route }) {
             flex: 1,
             paddingVertical: 14,
             fontSize: 14,
-            color: colors.ink,
+            color: mauSac.ink,
           }}
         />
         {!!query && (
@@ -125,7 +125,7 @@ export default function ExploreScreen({ route }) {
               setPage(1)
             }}
           >
-            <Icon name="close-circle" size={19} />
+            <BieuTuong name="close-circle" size={19} />
           </Pressable>
         )}
         <Pressable
@@ -133,7 +133,7 @@ export default function ExploreScreen({ route }) {
           accessibilityLabel="Tìm kiếm"
           onPress={submitSearch}
         >
-          <Icon name="arrow-forward" color={colors.accent} />
+          <BieuTuong name="arrow-forward" color={mauSac.accent} />
         </Pressable>
       </View>
       <View style={[s.between, { marginTop: 14 }]}>
@@ -144,11 +144,11 @@ export default function ExploreScreen({ route }) {
           onPress={() => setFiltersOpen((value) => !value)}
           style={[s.row, { gap: 7, paddingVertical: 8 }]}
         >
-          <Icon name="options-outline" size={18} color={colors.accent} />
+          <BieuTuong name="options-outline" size={18} color={mauSac.accent} />
           <Text style={s.link}>
             Bộ lọc{filterCount ? ` (${filterCount})` : ''}
           </Text>
-          <Icon name={filtersOpen ? 'chevron-up' : 'chevron-down'} size={16} />
+          <BieuTuong name={filtersOpen ? 'chevron-up' : 'chevron-down'} size={16} />
         </Pressable>
         {filterCount > 0 && (
           <Pressable
@@ -166,12 +166,12 @@ export default function ExploreScreen({ route }) {
           style={{
             borderTopWidth: 1,
             borderBottomWidth: 1,
-            borderColor: colors.border,
+            borderColor: mauSac.border,
             paddingVertical: 16,
             gap: 15,
           }}
         >
-          <FilterRow
+          <HangBoLoc
             label="Độ khó"
             value={difficulty}
             options={[
@@ -182,7 +182,7 @@ export default function ExploreScreen({ route }) {
             ]}
             onChange={(value) => updateFilter(setDifficulty, value)}
           />
-          <FilterRow
+          <HangBoLoc
             label="Thời gian"
             value={maxTime}
             options={[
@@ -193,7 +193,7 @@ export default function ExploreScreen({ route }) {
             ]}
             onChange={(value) => updateFilter(setMaxTime, value)}
           />
-          <FilterRow
+          <HangBoLoc
             label="Sắp xếp"
             value={sort}
             options={[
@@ -208,7 +208,7 @@ export default function ExploreScreen({ route }) {
           <View>
             <Text style={[s.label, { marginBottom: 9 }]}>Nguyên liệu</Text>
             {ingredients.error ? (
-              <Text style={[s.small, { color: colors.red }]}>Không tải được nguyên liệu.</Text>
+              <Text style={[s.small, { color: mauSac.red }]}>Không tải được nguyên liệu.</Text>
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {ingredients.data?.map((item) => {
@@ -269,15 +269,15 @@ export default function ExploreScreen({ route }) {
       <Text style={[s.small, { marginBottom: 15 }]}>
         {r.meta?.totalItems || 0} công thức dành cho bạn
       </Text>
-      <State
+      <TrangThai
         {...r}
         reload={r.reload}
         empty={!r.data?.length}
         emptyText="Chưa tìm thấy món ăn phù hợp. Hãy thử một tên khác nhé."
       />
       {!r.loading &&
-        r.data?.map((item) => <RecipeCard key={item.idMonAn} recipe={item} />)}
-      <Pager
+        r.data?.map((item) => <TheMonAn key={item.idMonAn} recipe={item} />)}
+      <PhanTrang
         page={page}
         meta={r.meta}
         onChange={setPage}
@@ -285,11 +285,11 @@ export default function ExploreScreen({ route }) {
         onLimitChange={setLimit}
         loading={r.loading}
       />
-    </Screen>
+    </ManHinh>
   )
 }
 
-function FilterRow({ label, value, options, onChange }) {
+function HangBoLoc({ label, value, options, onChange }) {
   return (
     <View>
       <Text style={[s.label, { marginBottom: 9 }]}>{label}</Text>

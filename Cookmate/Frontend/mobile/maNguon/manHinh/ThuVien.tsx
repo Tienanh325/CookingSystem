@@ -1,36 +1,36 @@
 import { useState } from 'react'
 import { Pressable, RefreshControl, Text, View } from 'react-native'
-import { useAuth } from '../context/AuthContext'
-import useResource from '../hooks/useResource'
-import { date } from '../services/api'
+import { useXacThuc } from '../nguCanh/NguCanhXacThuc'
+import useTaiNguyen from '../moc/useTaiNguyen'
+import { dinhDangNgay } from '../dichVu/KetNoiApi'
 import {
-  Header,
-  Icon,
-  LoginPrompt,
-  Pager,
-  RecipeCard,
-  Screen,
-  State,
-} from '../components/ui'
-import { colors, styles as s } from '../theme'
-export default function LibraryScreen({ route, navigation }) {
-  const favorites = route.name === 'Favorites',
-    { user } = useAuth(),
+  DauTrang,
+  BieuTuong,
+  LoiMoiDangNhap,
+  PhanTrang,
+  TheMonAn,
+  ManHinh,
+  TrangThai,
+} from '../thanhPhan/GiaoDien'
+import { mauSac, kieuDang as s } from '../ChuDe'
+export default function ThuVien({ route, navigation }) {
+  const favorites = route.name === 'YeuThich',
+    { nguoiDung } = useXacThuc(),
     [limit, setLimit] = useState(5),
     [page, setPage] = useState(1),
-    r = useResource(
+    r = useTaiNguyen(
       `${favorites ? '/yeu-thich' : '/lich-su-nau'}?page=${page}&limit=${limit}`,
-      !!user,
+      !!nguoiDung,
     )
   return (
-    <Screen resetKey={`${page}:${limit}`}
-      header={<Header notifications />}
+    <ManHinh resetKey={`${page}:${limit}`}
+      header={<DauTrang notifications />}
       refreshControl={
-        user ? (
+        nguoiDung ? (
           <RefreshControl
             refreshing={r.loading && !!r.data}
             onRefresh={r.reload}
-            tintColor={colors.accent}
+            tintColor={mauSac.accent}
           />
         ) : undefined
       }
@@ -43,11 +43,11 @@ export default function LibraryScreen({ route, navigation }) {
           ? 'Giữ lại những hương vị bạn muốn nấu thêm lần nữa.'
           : 'Mỗi lần vào bếp, thêm một kỷ niệm ngon.'}
       </Text>
-      {!user ? (
-        <LoginPrompt />
+      {!nguoiDung ? (
+        <LoiMoiDangNhap />
       ) : (
         <>
-          <State
+          <TrangThai
             {...r}
             reload={r.reload}
             empty={!r.data?.length}
@@ -60,13 +60,13 @@ export default function LibraryScreen({ route, navigation }) {
           {!r.loading &&
             r.data?.map((row) =>
               favorites ? (
-                <RecipeCard key={row.idMonAn} recipe={row.monAn} />
+                <TheMonAn key={row.idMonAn} recipe={row.monAn} />
               ) : (
                 <Pressable
                   accessibilityRole="button"
                   key={row.idLichSu}
                   onPress={() =>
-                    navigation.navigate('Cooking', { id: row.idLichSu })
+                    navigation.navigate('NauAn', { id: row.idLichSu })
                   }
                   style={s.card}
                 >
@@ -75,8 +75,8 @@ export default function LibraryScreen({ route, navigation }) {
                       style={[
                         s.badge,
                         row.trangThai === 'HOAN_THANH' && {
-                          backgroundColor: colors.greenSoft,
-                          color: colors.green,
+                          backgroundColor: mauSac.greenSoft,
+                          color: mauSac.green,
                         },
                       ]}
                     >
@@ -86,18 +86,18 @@ export default function LibraryScreen({ route, navigation }) {
                           ? 'Đã hoàn thành'
                           : 'Đã hủy'}
                     </Text>
-                    <Icon name="chevron-forward" size={18} />
+                    <BieuTuong name="chevron-forward" size={18} />
                   </View>
                   <Text style={[s.heading, { fontSize: 18 }]}>
                     {row.monAn?.tenMonAn || 'Món ăn'}
                   </Text>
                   <Text style={[s.small, { marginTop: 10 }]}>
-                    {date(row.thoiGianBatDau)} · Bước {row.buocHienTai}
+                    {dinhDangNgay(row.thoiGianBatDau)} · Bước {row.buocHienTai}
                   </Text>
                 </Pressable>
               ),
             )}
-          <Pager
+          <PhanTrang
             page={page}
             meta={r.meta}
             onChange={setPage}
@@ -107,6 +107,6 @@ export default function LibraryScreen({ route, navigation }) {
           />
         </>
       )}
-    </Screen>
+    </ManHinh>
   )
 }

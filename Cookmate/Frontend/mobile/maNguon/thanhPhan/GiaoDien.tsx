@@ -12,12 +12,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
-import { colors, styles as s } from '../theme'
-import { imageUrl } from '../services/api'
-export function Icon({ name, size = 21, color = colors.muted, ...props }) {
+import { mauSac, kieuDang as s } from '../ChuDe'
+import { duongDanAnh } from '../dichVu/KetNoiApi'
+export function BieuTuong({ name, size = 21, color = mauSac.muted, ...props }: any) {
   return <Ionicons name={name} size={size} color={color} {...props} />
 }
-export function Button({
+export function Nut({
   title,
   onPress,
   disabled = false,
@@ -25,7 +25,7 @@ export function Button({
   secondary = false,
   icon,
   style,
-}) {
+}: any) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -33,28 +33,28 @@ export function Button({
       disabled={disabled || busy}
       onPress={onPress}
       style={({ pressed }) => [
-        local.button,
-        secondary && local.secondary,
+        cucBo.button,
+        secondary && cucBo.secondary,
         (pressed || disabled || busy) && { opacity: 0.6 },
         style,
       ]}
     >
       {busy ? (
-        <ActivityIndicator color={secondary ? colors.accent : '#fff'} />
+        <ActivityIndicator color={secondary ? mauSac.accent : '#fff'} />
       ) : icon ? (
-        <Icon
+        <BieuTuong
           name={icon}
-          color={secondary ? colors.accent : '#fff'}
+          color={secondary ? mauSac.accent : '#fff'}
           size={18}
         />
       ) : null}
-      <Text style={[local.buttonText, secondary && { color: colors.accent }]}>
+      <Text style={[cucBo.buttonText, secondary && { color: mauSac.accent }]}>
         {title}
       </Text>
     </Pressable>
   )
 }
-export function Field({ label, style, ...props }) {
+export function TruongNhap({ label, style, ...props }: any) {
   return (
     <View style={s.field}>
       <Text style={s.label}>{label}</Text>
@@ -67,17 +67,17 @@ export function Field({ label, style, ...props }) {
     </View>
   )
 }
-export function Message({ children, success = false }) {
+export function ThongDiep({ children, success = false }: any) {
   return children ? (
     <View
       accessibilityRole="alert"
-      style={[local.message, success && { backgroundColor: colors.greenSoft }]}
+      style={[cucBo.message, success && { backgroundColor: mauSac.greenSoft }]}
     >
       <Text
         style={{
           fontSize: 13,
           lineHeight: 21,
-          color: success ? colors.green : colors.red,
+          color: success ? mauSac.green : mauSac.red,
         }}
       >
         {children}
@@ -85,14 +85,14 @@ export function Message({ children, success = false }) {
     </View>
   ) : null
 }
-export function Screen({
+export function ManHinh({
   children,
   scroll = true,
   style,
   header,
   refreshControl,
   resetKey,
-}) {
+}: any) {
   const scrollRef = useRef(null)
   useEffect(() => { if (resetKey !== undefined) scrollRef.current?.scrollTo({ y: 0, animated: false }) }, [resetKey])
   return (
@@ -113,10 +113,10 @@ export function Screen({
     </SafeAreaView>
   )
 }
-export function Header({ title, back = false, notifications = false }) {
-  const navigation = useNavigation()
+export function DauTrang({ title, back = false, notifications = false }: any) {
+  const navigation = useNavigation<any>()
   return (
-    <View style={local.header}>
+    <View style={cucBo.header}>
       {back ? (
         <Pressable
           accessibilityRole="button"
@@ -124,13 +124,13 @@ export function Header({ title, back = false, notifications = false }) {
           hitSlop={12}
           onPress={() => navigation.goBack()}
         >
-          <Icon name="arrow-back" color={colors.ink} />
+          <BieuTuong name="arrow-back" color={mauSac.ink} />
         </Pressable>
       ) : (
         <MaterialCommunityIcons
           name="chef-hat"
           size={28}
-          color={colors.accent}
+          color={mauSac.accent}
         />
       )}
       <View style={{ flex: 1, marginLeft: 10 }}>
@@ -138,13 +138,13 @@ export function Header({ title, back = false, notifications = false }) {
           style={{
             fontSize: back ? 17 : 21,
             fontWeight: '700',
-            color: back ? colors.ink : colors.accent,
+            color: back ? mauSac.ink : mauSac.accent,
           }}
         >
           {title || 'Cookmate'}
         </Text>
         {!back && (
-          <Text style={{ fontSize: 9, color: colors.muted }}>
+          <Text style={{ fontSize: 9, color: mauSac.muted }}>
             Bếp xinh mỗi ngày
           </Text>
         )}
@@ -154,34 +154,34 @@ export function Header({ title, back = false, notifications = false }) {
           accessibilityRole="button"
           accessibilityLabel="Thông báo"
           hitSlop={10}
-          onPress={() => navigation.navigate('Notifications')}
+          onPress={() => navigation.navigate('ThongBao')}
         >
-          <Icon name="notifications-outline" color={colors.ink} />
+          <BieuTuong name="notifications-outline" color={mauSac.ink} />
         </Pressable>
       )}
     </View>
   )
 }
-export function State({
+export function TrangThai({
   loading,
   error,
   empty,
   reload,
   emptyText = 'Chưa có nội dung ở đây.',
-}) {
+}: any) {
   if (loading)
     return (
       <View style={s.empty}>
-        <ActivityIndicator color={colors.accent} />
+        <ActivityIndicator color={mauSac.accent} />
         <Text style={s.muted}>Đang chuẩn bị…</Text>
       </View>
     )
   if (error)
     return (
       <View style={s.empty}>
-        <Icon name="cloud-offline-outline" size={35} />
-        <Message>{error}</Message>
-        <Button title="Thử lại" secondary onPress={reload} />
+        <BieuTuong name="cloud-offline-outline" size={35} />
+        <ThongDiep>{error}</ThongDiep>
+        <Nut title="Thử lại" secondary onPress={reload} />
       </View>
     )
   if (empty)
@@ -193,8 +193,8 @@ export function State({
     )
   return null
 }
-export function LoginPrompt() {
-  const nav = useNavigation()
+export function LoiMoiDangNhap() {
+  const nav = useNavigation<any>()
   return (
     <View
       style={[
@@ -202,31 +202,31 @@ export function LoginPrompt() {
         { padding: 28, marginTop: 24, alignItems: 'center', gap: 16 },
       ]}
     >
-      <Icon name="heart-circle-outline" size={52} color={colors.accent} />
+      <BieuTuong name="heart-circle-outline" size={52} color={mauSac.accent} />
       <Text style={s.heading}>Góc bếp của riêng bạn</Text>
       <Text style={[s.muted, { textAlign: 'center' }]}>
         Đăng nhập để lưu món yêu thích và tiếp tục những bữa ăn đang nấu.
       </Text>
-      <Button title="Đăng nhập" onPress={() => nav.navigate('Login')} />
+      <Nut title="Đăng nhập" onPress={() => nav.navigate('DangNhap')} />
       <Pressable
         accessibilityRole="button"
-        onPress={() => nav.navigate('Register')}
+        onPress={() => nav.navigate('DangKy')}
       >
         <Text style={s.link}>Chưa có tài khoản? Đăng ký</Text>
       </Pressable>
     </View>
   )
 }
-export function FoodImage({ uri, style }) {
+export function AnhMonAn({ uri, style }: any) {
   const [failed, setFailed] = useState(false)
   return uri && !failed ? (
     <Image
-      source={{ uri: imageUrl(uri) }}
-      style={[local.foodImage, style]}
+      source={{ uri: duongDanAnh(uri) }}
+      style={[cucBo.foodImage, style]}
       onError={() => setFailed(true)}
     />
   ) : (
-    <View style={[local.foodImage, local.foodPlaceholder, style]}>
+    <View style={[cucBo.foodImage, cucBo.foodPlaceholder, style]}>
       <MaterialCommunityIcons name="chef-hat" size={46} color="#be977a" />
       <Text style={{ fontSize: 11, color: '#be977a', marginTop: 6 }}>
         Cookmate kitchen
@@ -234,18 +234,18 @@ export function FoodImage({ uri, style }) {
     </View>
   )
 }
-export function RecipeCard({ recipe, horizontal = false, onPress }) {
-  const navigation = useNavigation()
+export function TheMonAn({ recipe, horizontal = false, onPress }: any) {
+  const navigation = useNavigation<any>()
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`Xem món ${recipe.tenMonAn}`}
       onPress={
-        onPress || (() => navigation.navigate('Detail', { id: recipe.idMonAn }))
+        onPress || (() => navigation.navigate('ChiTietMonAn', { id: recipe.idMonAn }))
       }
-      style={[local.recipeCard, horizontal && { width: 235, marginRight: 15 }]}
+      style={[cucBo.recipeCard, horizontal && { width: 235, marginRight: 15 }]}
     >
-      <FoodImage
+      <AnhMonAn
         uri={recipe.anhDaiDien || recipe.hinhAnhs?.[0]?.duongDan}
         style={{ height: horizontal ? 150 : 185 }}
       />
@@ -258,7 +258,7 @@ export function RecipeCard({ recipe, horizontal = false, onPress }) {
           style={{
             fontSize: 17,
             fontWeight: '700',
-            color: colors.ink,
+            color: mauSac.ink,
             marginVertical: 10,
           }}
         >
@@ -266,12 +266,12 @@ export function RecipeCard({ recipe, horizontal = false, onPress }) {
         </Text>
         <View style={s.between}>
           <View style={[s.row, { gap: 5 }]}>
-            <Icon name="time-outline" size={14} />
+            <BieuTuong name="time-outline" size={14} />
             <Text style={s.small}>{recipe.tongThoiGian} phút</Text>
             <Text style={s.small}> · {recipe.khauPhan} người</Text>
           </View>
           <View style={[s.row, { gap: 4 }]}>
-            <Icon name="star" color="#d89435" size={13} />
+            <BieuTuong name="star" color="#d89435" size={13} />
             <Text style={s.small}>
               {Number(recipe.diemDanhGia || 0).toFixed(1)}
             </Text>
@@ -281,14 +281,14 @@ export function RecipeCard({ recipe, horizontal = false, onPress }) {
     </Pressable>
   )
 }
-export function Pager({
+export function PhanTrang({
   page,
   meta,
   onChange,
   limit,
   onLimitChange,
   loading = false,
-}) {
+}: any) {
   useEffect(() => {
     if (!loading && meta && page > meta.totalPages)
       onChange(Math.max(1, meta.totalPages))
@@ -318,10 +318,10 @@ export function Pager({
               style={{
                 padding: 12,
                 borderRadius: 12,
-                backgroundColor: n === limit ? colors.accent : '#fff',
+                backgroundColor: n === limit ? mauSac.accent : '#fff',
               }}
             >
-              <Text style={{ color: n === limit ? '#fff' : colors.ink }}>
+              <Text style={{ color: n === limit ? '#fff' : mauSac.ink }}>
                 {n}
               </Text>
             </Pressable>
@@ -329,7 +329,7 @@ export function Pager({
         </View>
       )}
       <View style={s.between}>
-        <Button
+        <Nut
           title="Trước"
           secondary
           disabled={loading || page <= 1}
@@ -338,7 +338,7 @@ export function Pager({
         <Text style={s.small}>
           {page} / {meta.totalPages}
         </Text>
-        <Button
+        <Nut
           title="Tiếp"
           secondary
           disabled={loading || page >= meta.totalPages}
@@ -348,7 +348,7 @@ export function Pager({
     </View>
   ) : null
 }
-export function SectionTitle({ title, action, onPress }) {
+export function TieuDePhan({ title, action, onPress }: any) {
   return (
     <View style={[s.between, s.section]}>
       <Text style={s.heading}>{title}</Text>
@@ -360,20 +360,20 @@ export function SectionTitle({ title, action, onPress }) {
     </View>
   )
 }
-const local = StyleSheet.create({
+const cucBo = StyleSheet.create({
   button: {
     minHeight: 49,
     borderRadius: 12,
     paddingHorizontal: 20,
     paddingVertical: 13,
-    backgroundColor: colors.accent,
+    backgroundColor: mauSac.accent,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 9,
   },
   secondary: {
-    backgroundColor: colors.soft,
+    backgroundColor: mauSac.soft,
     borderWidth: 1,
     borderColor: '#f4d8c7',
   },
@@ -390,15 +390,15 @@ const local = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.background,
+    borderBottomColor: mauSac.border,
+    backgroundColor: mauSac.background,
   },
   foodImage: { width: '100%', height: 200, backgroundColor: '#f6eadd' },
   foodPlaceholder: { alignItems: 'center', justifyContent: 'center' },
   recipeCard: {
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: mauSac.border,
     borderRadius: 17,
     overflow: 'hidden',
     marginBottom: 16,

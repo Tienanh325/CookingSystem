@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Modal, Pressable, Text, View } from 'react-native'
-import useResource from '../hooks/useResource'
-import { api } from '../services/api'
-import { useAuth } from '../context/AuthContext'
-import { Button, Header, Icon, LoginPrompt, Message, Screen, State } from '../components/ui'
-import { colors, styles as s } from '../theme'
-export default function CookingScreen({ route, navigation }) {
-  const { user } = useAuth(),
-    r = useResource(`/lich-su-nau/${route.params.id}`, !!user),
+import useTaiNguyen from '../moc/useTaiNguyen'
+import { goiApi } from '../dichVu/KetNoiApi'
+import { useXacThuc } from '../nguCanh/NguCanhXacThuc'
+import { Nut, DauTrang, BieuTuong, LoiMoiDangNhap, ThongDiep, ManHinh, TrangThai } from '../thanhPhan/GiaoDien'
+import { mauSac, kieuDang as s } from '../ChuDe'
+export default function NauAn({ route, navigation }) {
+  const { nguoiDung } = useXacThuc(),
+    r = useTaiNguyen(`/lich-su-nau/${route.params.id}`, !!nguoiDung),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [confirm, setConfirm] = useState(false),
@@ -38,7 +38,7 @@ export default function CookingScreen({ route, navigation }) {
     setBusy(true)
     setError('')
     try {
-      await api(`/lich-su-nau/${history.idLichSu}/steps/${current.idBuocNau}`, {
+      await goiApi(`/lich-su-nau/${history.idLichSu}/steps/${current.idBuocNau}`, {
         method: 'PATCH',
         body: { daHoanThanh: true },
       })
@@ -53,7 +53,7 @@ export default function CookingScreen({ route, navigation }) {
   async function cancel() {
     setBusy(true)
     try {
-      await api(`/lich-su-nau/${history.idLichSu}/cancel`, { method: 'PATCH', body: {} })
+      await goiApi(`/lich-su-nau/${history.idLichSu}/cancel`, { method: 'PATCH', body: {} })
       setConfirm(false)
       setDeadline(null)
       r.reload()
@@ -66,13 +66,13 @@ export default function CookingScreen({ route, navigation }) {
   }
   const complete = details.filter((d) => d.daHoanThanh).length
   return (
-    <Screen header={<Header back title="Cùng vào bếp" />}>
-      {!user ? (
-        <LoginPrompt />
+    <ManHinh header={<DauTrang back title="Cùng vào bếp" />}>
+      {!nguoiDung ? (
+        <LoiMoiDangNhap />
       ) : (
         <>
-          <State {...r} reload={r.reload} />
-          <Message>{error}</Message>
+          <TrangThai {...r} reload={r.reload} />
+          <ThongDiep>{error}</ThongDiep>
           {history && (
             <>
               <Text style={s.badge}>
@@ -104,20 +104,20 @@ export default function CookingScreen({ route, navigation }) {
                   style={{
                     height: '100%',
                     width: `${details.length ? (complete / details.length) * 100 : 0}%`,
-                    backgroundColor: colors.accent,
+                    backgroundColor: mauSac.accent,
                   }}
                 />
               </View>
               {finished ? (
                 <View style={[s.card, { alignItems: 'center', padding: 28, gap: 16 }]}>
-                  <Icon
+                  <BieuTuong
                     name={
                       history.trangThai === 'HOAN_THANH'
                         ? 'checkmark-circle-outline'
                         : 'close-circle-outline'
                     }
                     size={65}
-                    color={history.trangThai === 'HOAN_THANH' ? colors.green : colors.muted}
+                    color={history.trangThai === 'HOAN_THANH' ? mauSac.green : mauSac.muted}
                   />
                   <Text style={[s.heading, { textAlign: 'center' }]}>
                     {history.trangThai === 'HOAN_THANH'
@@ -129,9 +129,9 @@ export default function CookingScreen({ route, navigation }) {
                       ? 'Thưởng thức thành quả và chia sẻ cảm nhận về món ăn nhé.'
                       : 'Lịch sử của phiên này vẫn được lưu lại.'}
                   </Text>
-                  <Button
+                  <Nut
                     title="Xem lại công thức"
-                    onPress={() => navigation.popTo('Detail', { id: history.idMonAn })}
+                    onPress={() => navigation.popTo('ChiTietMonAn', { id: history.idMonAn })}
                   />
                 </View>
               ) : (
@@ -154,19 +154,19 @@ export default function CookingScreen({ route, navigation }) {
                           marginBottom: 22,
                         }}
                       >
-                        <Icon name="timer-outline" size={28} color={colors.accent} />
+                        <BieuTuong name="timer-outline" size={28} color={mauSac.accent} />
                         <Text
                           style={{
                             fontSize: 35,
                             fontWeight: '600',
-                            color: colors.ink,
+                            color: mauSac.ink,
                             marginVertical: 10,
                           }}
                         >
                           {String(Math.floor(remaining / 60)).padStart(2, '0')}:
                           {String(remaining % 60).padStart(2, '0')}
                         </Text>
-                        <Button
+                        <Nut
                           title={
                             deadline ? 'Dừng hẹn giờ' : `Hẹn giờ ${current.buocNau.thoiGian} phút`
                           }
@@ -182,7 +182,7 @@ export default function CookingScreen({ route, navigation }) {
                         />
                       </View>
                     )}
-                    <Button
+                    <Nut
                       title={
                         complete === details.length - 1
                           ? 'Hoàn thành món ăn'
@@ -207,16 +207,16 @@ export default function CookingScreen({ route, navigation }) {
                       gap: 13,
                       paddingVertical: 14,
                       borderBottomWidth: 1,
-                      borderBottomColor: colors.border,
+                      borderBottomColor: mauSac.border,
                     },
                   ]}
                 >
-                  <Icon
+                  <BieuTuong
                     name={d.daHoanThanh ? 'checkmark-circle' : 'ellipse-outline'}
-                    color={d.daHoanThanh ? colors.green : colors.muted}
+                    color={d.daHoanThanh ? mauSac.green : mauSac.muted}
                   />
                   <Text
-                    style={[s.body, { flex: 1, color: d.daHoanThanh ? colors.green : colors.ink }]}
+                    style={[s.body, { flex: 1, color: d.daHoanThanh ? mauSac.green : mauSac.ink }]}
                   >
                     {d.buocNau.soThuTu}. {d.buocNau.tieuDe || 'Thực hiện bước nấu'}
                   </Text>
@@ -228,7 +228,7 @@ export default function CookingScreen({ route, navigation }) {
                   onPress={() => setConfirm(true)}
                   style={{ alignItems: 'center', padding: 25 }}
                 >
-                  <Text style={{ color: colors.red, fontSize: 13 }}>Dừng và hủy phiên nấu</Text>
+                  <Text style={{ color: mauSac.red, fontSize: 13 }}>Dừng và hủy phiên nấu</Text>
                 </Pressable>
               )}
             </>
@@ -257,17 +257,17 @@ export default function CookingScreen({ route, navigation }) {
             <Text style={[s.muted, { marginBottom: 22 }]}>
               Phiên nấu sẽ được lưu là đã hủy. Bạn có thể bắt đầu một phiên mới sau.
             </Text>
-            <Message>{error}</Message>
-            <Button
+            <ThongDiep>{error}</ThongDiep>
+            <Nut
               title="Tiếp tục nấu"
               secondary
               disabled={busy}
               onPress={() => setConfirm(false)}
             />
-            <Button title="Hủy phiên nấu" busy={busy} style={{ marginTop: 12 }} onPress={cancel} />
+            <Nut title="Hủy phiên nấu" busy={busy} style={{ marginTop: 12 }} onPress={cancel} />
           </View>
         </View>
       </Modal>
-    </Screen>
+    </ManHinh>
   )
 }

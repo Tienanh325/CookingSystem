@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useFocusEffect } from '@react-navigation/native'
-import { api } from '../services/api'
-export default function useResource(path, enabled = true) {
+import { goiApi } from '../dichVu/KetNoiApi'
+export default function useTaiNguyen(path, enabled = true) {
   const [state, setState] = useState({ data: null, meta: null, loading: enabled, error: '' }),
     [revision, setRevision] = useState(0)
   const reload = useCallback(() => setRevision((v) => v + 1), [])
@@ -13,7 +13,7 @@ export default function useResource(path, enabled = true) {
       }
       const controller = new AbortController()
       setState((s) => ({ ...s, loading: true, error: '' }))
-      api(path, { signal: controller.signal })
+      goiApi(path, { signal: controller.signal })
         .then((r) => {
           if (!controller.signal.aborted)
             setState({ data: r.data, meta: r.meta, loading: false, error: '' })

@@ -1,6 +1,6 @@
 # App khách hàng Cookmate
 
-Expo SDK 55, React Native và React Navigation; mã ứng dụng nằm trong `src/`.
+Expo SDK 55, React Native, TypeScript và React Navigation; mã ứng dụng nằm trong `maNguon/`. Tên file, component và màn hình do dự án định nghĩa sử dụng tiếng Việt không dấu, ví dụ `TrangChu`, `KhamPha`, `ChiTietMonAn`.
 
 ```powershell
 npm ci
@@ -32,5 +32,7 @@ npm run check
 npm run web
 npm run export:android
 ```
+
+`npm run check` kiểm tra đồng thời phiên bản thư viện Expo và kiểu dữ liệu TypeScript.
 
 `export:android` kiểm tra/đóng gói JavaScript, không tạo APK. Cần kiểm thử trên điện thoại thật cho bàn phím, vùng an toàn, kết nối LAN và lưu phiên native. Thông báo hiện hiển thị trong ứng dụng, chưa có push nền.
