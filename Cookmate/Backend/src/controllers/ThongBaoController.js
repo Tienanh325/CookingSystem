@@ -6,6 +6,7 @@ const { sendSuccess } = require('../utils/apiResponse');
 const { getPagination, getPagingMeta } = require('../utils/query');
 const audit = require('../utils/audit');
 const error = require('../utils/httpError');
+const { guiThongBaoDay } = require('../services/thongBaoDay');
 module.exports = {
   listMine: asyncHandler(async (req, res) => {
     const { page, limit, offset } = getPagination(req.query);
@@ -59,6 +60,33 @@ module.exports = {
     );
     return sendSuccess(res, 200, 'Đã đọc tất cả');
   }),
+  registerDevice: asyncHandler(async (req, res) => {
+    const [thietBi, daTao] = await db.ThietBiThongBao.findOrCreate({
+      where: { token: req.body.token },
+      defaults: {
+        idNguoiDung: req.auth.idNguoiDung,
+        token: req.body.token,
+        nenTang: req.body.nenTang,
+        maThietBi: req.body.maThietBi || null,
+      },
+    });
+    if (!daTao)
+      await thietBi.update({
+        idNguoiDung: req.auth.idNguoiDung,
+        nenTang: req.body.nenTang,
+        maThietBi: req.body.maThietBi || null,
+        hoatDong: 1,
+        ngayCapNhat: new Date(),
+      });
+    return sendSuccess(res, daTao ? 201 : 200, 'Đã đăng ký thiết bị nhận thông báo.', thietBi);
+  }),
+  unregisterDevices: asyncHandler(async (req, res) => {
+    await db.ThietBiThongBao.update(
+      { hoatDong: 0, ngayCapNhat: new Date() },
+      { where: { idNguoiDung: req.auth.idNguoiDung, hoatDong: 1 } },
+    );
+    return sendSuccess(res, 200, 'Đã tắt push notification trên các thiết bị.');
+  }),
   create: asyncHandler(async (req, res) => {
     const result = await sequelize.transaction(async (transaction) => {
       const selected = [...new Set(req.body.idNguoiDungs || [])];
@@ -87,8 +115,20 @@ module.exports = {
         { transaction },
       );
       await audit(req, 'CREATE', 'ThongBao', thongBao.idThongBao, transaction);
-      return { thongBao, soNguoiNhan: users.length };
+      return {
+        thongBao,
+        soNguoiNhan: users.length,
+        idNguoiDungs: users.map((user) => user.idNguoiDung),
+      };
     });
-    return sendSuccess(res, 201, 'Đã gửi thông báo', result);
+    let push = { daGui: 0, thatBai: 0 };
+    try {
+      push = await guiThongBaoDay(result.idNguoiDungs, result.thongBao);
+    } catch (pushError) {
+      console.error('Không gửi được Expo Push:', pushError.message);
+      push = { daGui: 0, thatBai: result.idNguoiDungs.length, loi: 'PUSH_PROVIDER_ERROR' };
+    }
+    const { idNguoiDungs, ...duLieu } = result;
+    return sendSuccess(res, 201, 'Đã gửi thông báo', { ...duLieu, push });
   }),
 };

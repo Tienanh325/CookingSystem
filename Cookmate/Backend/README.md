@@ -16,6 +16,10 @@ npm run seed
 npm run dev
 ```
 
+Để gửi email thật, cấu hình `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `EMAIL_FROM` và `APP_PUBLIC_URL`. `APP_PUBLIC_URL=cookmate://` mở trực tiếp ứng dụng từ liên kết xác minh/đặt lại mật khẩu. Trong môi trường development chưa có SMTP, liên kết được in ra terminal; production sẽ từ chối gửi nếu SMTP chưa được cấu hình.
+
+Push notification sử dụng Expo Push Service. Mobile đăng ký Expo push token với backend; có thể đặt `EXPO_ACCESS_TOKEN` nếu dự án bật enhanced push security.
+
 API mặc định tại `http://localhost:8080/api`. Upload tại `/uploads`.
 
 Nếu frontend báo `Route GET /api/admin/... not found` trong khi route đã có trong code, hãy kiểm tra tiến trình đang giữ cổng 8080 và khởi động lại đúng backend bằng `npm run dev --prefix Backend` từ thư mục gốc. Backend nạp `.env` theo vị trí file, không phụ thuộc thư mục terminal. `nodemon.json` bật theo dõi bằng polling trên Windows để tự nạp lại khi đổi `src` hoặc `.env`.
@@ -39,7 +43,7 @@ Dữ liệu trải nghiệm có thể nạp bằng `npm run seed:demo`, kiểm t
 - Upload ảnh JPEG/PNG/WebP tối đa 5 MB, giải mã thực tế và tái mã hóa WebP; không tin MIME do client gửi.
 - Ghi nhật ký thao tác quản trị; kiểm tra dữ liệu đầu vào, người nhận thông báo và giới hạn tần suất xác thực/upload.
 
-Các endpoint quản trị mở rộng nằm dưới `/api/admin`; các route hiện có tiếp tục nằm trong `src/routes`. Thông báo hiện là thông báo trong ứng dụng, chưa gửi push/email.
+Các endpoint quản trị mở rộng nằm dưới `/api/admin`; các route hiện có tiếp tục nằm trong `src/routes`. Thông báo được lưu trong ứng dụng và đồng thời gửi push qua Expo tới các thiết bị đã đăng ký.
 
 ## Kiểm thử
 

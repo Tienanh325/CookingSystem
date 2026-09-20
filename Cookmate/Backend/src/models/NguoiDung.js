@@ -15,6 +15,8 @@ const NguoiDung = sequelize.define(
       allowNull: false,
     },
     tokenVersion: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+    emailDaXacMinh: { type: DataTypes.TINYINT, allowNull: false, defaultValue: 0 },
+    thoiGianXacMinhEmail: { type: DataTypes.DATE, allowNull: true },
 
     hoTen: {
       type: DataTypes.STRING(100),

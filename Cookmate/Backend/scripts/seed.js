@@ -26,6 +26,8 @@ async function seed() {
     hoTen: 'Quản trị Cookmate',
     email,
     matKhau: await bcrypt.hash(password, 12),
+    emailDaXacMinh: 1,
+    thoiGianXacMinhEmail: new Date(),
     trangThai: 1,
   });
   if (!process.env.ADMIN_PASSWORD) {

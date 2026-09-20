@@ -157,6 +157,12 @@ function validateRequest(req, res, next) {
         .transform((v) => v.toLowerCase()),
       matKhau: z.string().min(1).max(200),
     });
+  else if (['/auth/forgot-password', '/auth/resend-verification'].includes(path))
+    schema = z.object({ email: z.email().max(150).transform((v) => v.toLowerCase()) });
+  else if (path === '/auth/verify-email')
+    schema = z.object({ token: z.string().regex(/^[a-f0-9]{64}$/) });
+  else if (path === '/auth/reset-password')
+    schema = z.object({ token: z.string().regex(/^[a-f0-9]{64}$/), matKhauMoi: password });
   else if (path === '/auth/me') schema = profile;
   else if (path === '/auth/change-password')
     schema = z.object({ matKhauCu: z.string().min(1).max(200), matKhauMoi: password });
@@ -185,6 +191,15 @@ function validateRequest(req, res, next) {
         idNguoiDungs: z.array(id).max(1000).optional(),
       })
       .refine((v) => v.guiTatCa || v.idNguoiDungs?.length, 'Cần chọn người nhận.');
+  else if (path === '/thong-bao/thiet-bi')
+    schema = z.object({
+      token: z
+        .string()
+        .max(255)
+        .regex(/^(ExponentPushToken|ExpoPushToken)\[[^\]]+\]$/),
+      nenTang: z.enum(['android', 'ios']),
+      maThietBi: z.string().trim().max(191).nullable().optional(),
+    });
   if (!schema) return next();
   const result = schema.safeParse(req.body);
   if (!result.success)

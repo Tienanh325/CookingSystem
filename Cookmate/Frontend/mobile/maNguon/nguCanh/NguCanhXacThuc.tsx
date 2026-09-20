@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { Platform } from 'react-native'
 import * as SecureStore from 'expo-secure-store'
 import { goiApi, datMaTruyCap, datXuLyChuaXacThuc } from '../dichVu/KetNoiApi'
+import { dangKyThongBaoDay, huyDangKyThongBaoDay } from '../dichVu/ThongBaoDay'
 const NguCanhXacThuc = createContext<any>(null)
 const KHOA_PHIEN = 'cookmate.session'
 const KHOA_SINH_TRAC = 'cookmate.biometric'
@@ -68,6 +69,9 @@ export function NhaCungCapXacThuc({ children }) {
       datXuLyChuaXacThuc(null)
     }
   }, [])
+  useEffect(() => {
+    if (nguoiDung) dangKyThongBaoDay(false).catch(() => {})
+  }, [nguoiDung])
   async function xacThucTaiKhoan(body, dangKy = false) {
     const ketQua = await goiApi(dangKy ? '/auth/register' : '/auth/login', {
       method: 'POST',
@@ -87,6 +91,7 @@ export function NhaCungCapXacThuc({ children }) {
     datLoiPhien('')
   }
   async function dangXuat() {
+    await huyDangKyThongBaoDay().catch(() => {})
     await goiApi('/auth/logout', { method: 'POST', body: {} })
     await xoaPhien()
   }

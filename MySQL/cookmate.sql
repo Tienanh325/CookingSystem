@@ -18,6 +18,8 @@ CREATE TABLE NguoiDung (
     matKhau VARCHAR(255) NOT NULL,
     soDienThoai VARCHAR(20),
     anhDaiDien VARCHAR(255),
+    emailDaXacMinh TINYINT NOT NULL DEFAULT 0,
+    thoiGianXacMinhEmail DATETIME NULL,
     trangThai TINYINT NOT NULL DEFAULT 1,
     ngayTao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ngayCapNhat DATETIME NOT NULL
@@ -28,6 +30,30 @@ CREATE TABLE NguoiDung (
         REFERENCES VaiTro(idVaiTro)
         ON UPDATE CASCADE
         ON DELETE RESTRICT
+);
+CREATE TABLE AuthIdentity (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    provider VARCHAR(20) NOT NULL,
+    subject VARCHAR(191) NOT NULL,
+    idNguoiDung INT NOT NULL,
+    CONSTRAINT uqAuthIdentityProviderSubject
+        UNIQUE (provider, subject),
+    CONSTRAINT fkAuthIdentityNguoiDung
+        FOREIGN KEY (idNguoiDung)
+        REFERENCES NguoiDung(idNguoiDung)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+);
+CREATE TABLE AuthChallenge (
+    id CHAR(36) PRIMARY KEY,
+    kind VARCHAR(20) NOT NULL,
+    subject VARCHAR(191) NOT NULL,
+    payload JSON NOT NULL,
+    expiresAt DATETIME NOT NULL,
+    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    consumed TINYINT(1) NOT NULL DEFAULT 0,
+    attempts INT NOT NULL DEFAULT 0,
+    INDEX idxAuthChallengeKindSubjectCreatedAt (kind, subject, createdAt)
 );
 CREATE TABLE DanhMuc (
     idDanhMuc INT AUTO_INCREMENT PRIMARY KEY,
@@ -287,6 +313,23 @@ CREATE TABLE ThongBaoNguoiDung (
         ON UPDATE CASCADE
         ON DELETE CASCADE,
     CONSTRAINT fkThongBaoNguoiDungNguoiDung
+        FOREIGN KEY (idNguoiDung)
+        REFERENCES NguoiDung(idNguoiDung)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+);
+CREATE TABLE ThietBiThongBao (
+    idThietBiThongBao INT AUTO_INCREMENT PRIMARY KEY,
+    idNguoiDung INT NOT NULL,
+    token VARCHAR(255) NOT NULL,
+    nenTang VARCHAR(20) NOT NULL,
+    maThietBi VARCHAR(191),
+    hoatDong TINYINT NOT NULL DEFAULT 1,
+    ngayTao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ngayCapNhat DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uqThietBiThongBaoToken UNIQUE (token),
+    INDEX idxThietBiThongBaoNguoiDungHoatDong (idNguoiDung, hoatDong),
+    CONSTRAINT fkThietBiThongBaoNguoiDung
         FOREIGN KEY (idNguoiDung)
         REFERENCES NguoiDung(idNguoiDung)
         ON UPDATE CASCADE

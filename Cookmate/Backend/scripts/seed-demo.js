@@ -51,6 +51,7 @@ async function seedDemo() {
     const users = [];
     for (let i = 0; i < 10; i++) users.push(await ensure('NguoiDung', { email: credentials[i].email }, {
       hoTen: `${names[i]} (Demo)`, idVaiTro: userRole.idVaiTro, matKhau: hashes[i],
+      emailDaXacMinh: 1, thoiGianXacMinhEmail: new Date(),
     }));
     for (let i = 0; i < recipes.length; i++) {
       const data = recipes[i];

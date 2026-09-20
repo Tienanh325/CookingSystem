@@ -68,6 +68,8 @@ async function identityUser(provider, subject, details, transaction) {
       email: details.email || null,
       matKhau: null,
       soDienThoai: null,
+      emailDaXacMinh: details.email ? 1 : 0,
+      thoiGianXacMinhEmail: details.email ? new Date() : null,
     },
     { transaction },
   );

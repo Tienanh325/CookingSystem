@@ -10,8 +10,15 @@ const asyncHandler = require('../utils/asyncHandler');
 const { sendError, sendSuccess } = require('../utils/apiResponse');
 const { normalizeText } = require('../utils/query');
 const { sanitizeUser } = require('../utils/serializers');
+const {
+  datLaiMatKhau,
+  guiThuDatLaiMatKhau,
+  guiThuXacMinh,
+  xacMinhEmail,
+} = require('../services/xacThucEmail');
 
 const DEFAULT_USER_ROLES = ['USER', 'NGUOI_DUNG', 'KHACH_HANG'];
+const ADMIN_ROLES = ['ADMIN', 'QUAN_TRI', 'ADMINISTRATOR'];
 
 const createToken = (user) => {
   return jwt.sign(
@@ -97,6 +104,7 @@ const AuthController = {
       email,
       matKhau: hashedPassword,
       soDienThoai: soDienThoai || null,
+      emailDaXacMinh: 0,
       trangThai: 1,
     });
 
@@ -110,7 +118,11 @@ const AuthController = {
       ],
     });
 
-    return sendSuccess(res, 201, 'Register successfully', buildAuthPayload(userWithRole));
+    await guiThuXacMinh(userWithRole);
+    return sendSuccess(res, 201, 'Đăng ký thành công. Hãy kiểm tra email để xác minh.', {
+      email: userWithRole.email,
+      canDangNhap: false,
+    });
   }),
 
   login: asyncHandler(async (req, res) => {
@@ -142,6 +154,13 @@ const AuthController = {
 
     if (!passwordMatched) {
       return sendError(res, 401, 'Invalid email or password');
+    }
+
+    if (
+      !user.emailDaXacMinh &&
+      !ADMIN_ROLES.includes(String(user.vaiTro?.tenVaiTro || '').toUpperCase())
+    ) {
+      return sendError(res, 403, 'Email chưa được xác minh. Hãy kiểm tra hộp thư của bạn.');
     }
 
     return sendSuccess(res, 200, 'Login successfully', buildAuthPayload(user));
@@ -211,7 +230,40 @@ const AuthController = {
   }),
   logout: asyncHandler(async (req, res) => {
     await db.NguoiDung.increment('tokenVersion', { where: { idNguoiDung: req.auth.idNguoiDung } });
+    if (db.ThietBiThongBao)
+      await db.ThietBiThongBao.update(
+        { hoatDong: 0, ngayCapNhat: new Date() },
+        { where: { idNguoiDung: req.auth.idNguoiDung } },
+      );
     return sendSuccess(res, 200, 'Đã đăng xuất khỏi tất cả thiết bị.');
+  }),
+  resendVerification: asyncHandler(async (req, res) => {
+    const email = normalizeText(req.body.email).toLowerCase();
+    const user = await db.NguoiDung.findOne({ where: { email, trangThai: 1 } });
+    if (user && !user.emailDaXacMinh) await guiThuXacMinh(user);
+    return sendSuccess(
+      res,
+      200,
+      'Nếu email hợp lệ và chưa xác minh, Cookmate đã gửi một liên kết mới.',
+    );
+  }),
+  verifyEmail: asyncHandler(async (req, res) => {
+    await xacMinhEmail(req.body.token);
+    return sendSuccess(res, 200, 'Email đã được xác minh. Bạn có thể đăng nhập.');
+  }),
+  forgotPassword: asyncHandler(async (req, res) => {
+    const email = normalizeText(req.body.email).toLowerCase();
+    const user = await db.NguoiDung.findOne({ where: { email, trangThai: 1 } });
+    if (user?.matKhau) await guiThuDatLaiMatKhau(user);
+    return sendSuccess(
+      res,
+      200,
+      'Nếu email tồn tại, Cookmate đã gửi liên kết đặt lại mật khẩu.',
+    );
+  }),
+  resetPassword: asyncHandler(async (req, res) => {
+    await datLaiMatKhau(req.body.token, req.body.matKhauMoi);
+    return sendSuccess(res, 200, 'Mật khẩu đã được đặt lại. Hãy đăng nhập lại.');
   }),
 };
 

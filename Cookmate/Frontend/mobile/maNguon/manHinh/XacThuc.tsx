@@ -38,16 +38,28 @@ export default function XacThuc({ navigation, route }) {
     }
     setBusy(true)
     try {
-      await xacThucTaiKhoan(
-        {
+      if (register) {
+        const ketQua = await goiApi('/auth/register', {
+          method: 'POST',
+          body: {
+            email: email.trim().toLowerCase(),
+            matKhau: password,
+            hoTen: name.trim(),
+          },
+        })
+        navigation.replace('XacMinhEmail', { email: ketQua.data.email })
+      } else {
+        await xacThucTaiKhoan({
           email: email.trim().toLowerCase(),
           matKhau: password,
-          ...(register ? { hoTen: name.trim() } : {}),
-        },
-        register,
-      )
-      navigation.popToTop()
-    } catch (e) {
+        })
+        navigation.popToTop()
+      }
+    } catch (e: any) {
+      if (!register && e.status === 403 && e.message.includes('xác minh')) {
+        navigation.navigate('XacMinhEmail', { email: email.trim().toLowerCase() })
+        return
+      }
       setError(e.message)
     } finally {
       setBusy(false)
@@ -138,6 +150,15 @@ export default function XacThuc({ navigation, route }) {
         >
           <Text style={s.link}>{visible ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}</Text>
         </Pressable>
+        {!register && (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => navigation.navigate('QuenMatKhau')}
+            style={{ alignSelf: 'flex-end', marginBottom: 18 }}
+          >
+            <Text style={s.link}>Quên mật khẩu?</Text>
+          </Pressable>
+        )}
         {register && (
           <TruongNhap
             label="Xác nhận mật khẩu"

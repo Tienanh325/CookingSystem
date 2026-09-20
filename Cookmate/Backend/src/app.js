@@ -44,6 +44,21 @@ app.use(
     message: { success: false, message: 'Quá nhiều lần đăng ký. Vui lòng thử lại sau.' },
   }),
 );
+app.use(
+  [
+    '/api/auth/forgot-password',
+    '/api/auth/resend-verification',
+    '/api/auth/verify-email',
+    '/api/auth/reset-password',
+  ],
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    message: { success: false, message: 'Quá nhiều yêu cầu email. Vui lòng thử lại sau.' },
+  }),
+);
 app.use('/api', validateRequest);
 app.use('/api', apiRoutes);
 

@@ -54,6 +54,7 @@ async function main() {
   const express = br('express'),
     outer = express(),
     app = br('./src/app');
+  const hopThuKiemThu = br('./src/services/guiEmail').hopThuKiemThu;
   outer.use((req, res, next) =>
     req.path.startsWith('/api') || req.path.startsWith('/uploads') ? app(req, res, next) : next(),
   );
@@ -236,6 +237,18 @@ async function main() {
   await mobile.getByLabel('Mật khẩu', { exact: true }).fill('Customer123!');
   await mobile.getByLabel('Xác nhận mật khẩu', { exact: true }).fill('Customer123!');
   await mobile.getByRole('button', { name: 'Tạo tài khoản', exact: true }).click();
+  await expect(mobile.getByText('Xác minh email', { exact: true }).first()).toBeVisible();
+  const thuXacMinh = hopThuKiemThu.findLast(
+    (item) => item.den === 'mobile@ui.local' && item.loai === 'EMAIL_VERIFY',
+  );
+  assert.ok(thuXacMinh?.token);
+  await call('POST', '/auth/verify-email', { token: thuXacMinh.token });
+  await mobile
+    .getByRole('button', { name: 'Tôi đã xác minh, đăng nhập', exact: true })
+    .click();
+  await mobile.getByLabel('Email', { exact: true }).fill('mobile@ui.local');
+  await mobile.getByLabel('Mật khẩu', { exact: true }).fill('Customer123!');
+  await mobile.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
   await expect(mobile.getByText('Hôm nay mình', { exact: false })).toBeVisible();
   await mobile.getByRole('button', { name: 'Xem món Cơm gà gừng ấm áp', exact: true }).click();
   await mobile.getByRole('button', { name: 'Lưu yêu thích', exact: true }).click();

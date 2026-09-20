@@ -8,6 +8,8 @@ async function migrate() {
   const tables = (await qi.showAllTables()).map((t) => String(t).toLowerCase());
   const changes = [
     ['NguoiDung', 'tokenVersion', { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 }],
+    ['NguoiDung', 'emailDaXacMinh', { type: DataTypes.TINYINT, allowNull: false, defaultValue: 1 }],
+    ['NguoiDung', 'thoiGianXacMinhEmail', { type: DataTypes.DATE, allowNull: true }],
     ['MonAn', 'phienBan', { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 }],
     ['BuocNau', 'phienBan', { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 }],
     ['LichSuNau', 'congThucSnapshot', { type: DataTypes.JSON, allowNull: true }],
@@ -43,7 +45,7 @@ async function migrate() {
   }
   await sequelize.sync();
   console.log(
-    'Schema ready: token revocation, versioned steps, history snapshots and unique indexes.',
+    'Schema ready: email verification, push devices, token revocation and recipe history.',
   );
 }
 module.exports = migrate;

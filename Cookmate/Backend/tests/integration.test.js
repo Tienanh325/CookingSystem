@@ -24,6 +24,7 @@ let connection,
   adminRole,
   userRole,
   created = false;
+let hopThuKiemThu;
 async function request(method, route, body, token) {
   const response = await fetch(base + route, {
     method,
@@ -64,6 +65,7 @@ before(async () => {
     matKhau: await bcrypt.hash('Password123!', 12),
   });
   const app = require('../src/app');
+  hopThuKiemThu = require('../src/services/guiEmail').hopThuKiemThu;
   server = app.listen(0, '127.0.0.1');
   await new Promise((r) => server.once('listening', r));
   base = `http://127.0.0.1:${server.address().port}/api`;
@@ -75,8 +77,12 @@ before(async () => {
       matKhau: 'Password123!',
     });
     assert.equal(r.status, 201);
-    if (email.startsWith('user')) user = r.data.token;
-    else other = r.data.token;
+    assert.equal(r.data.token, undefined);
+    const thu = hopThuKiemThu.findLast((item) => item.den === email && item.loai === 'EMAIL_VERIFY');
+    assert.ok(thu?.token);
+    assert.equal((await request('POST', '/auth/verify-email', { token: thu.token })).status, 200);
+    if (email.startsWith('user')) user = await login(email);
+    else other = await login(email);
   }
 });
 after(async () => {
@@ -96,6 +102,66 @@ test('retired phone OTP endpoints are unavailable', async () => {
   assert.equal(methods.data.localOtp, undefined);
   assert.equal((await request('POST', '/auth/otp/request', { phone: '0912345678' })).status, 404);
   assert.equal((await request('POST', '/auth/otp/verify', { challengeId: crypto.randomUUID(), code: '123456' })).status, 404);
+});
+test('email verification and password reset use expiring one-time tokens', async () => {
+  const email = 'recovery@test.local';
+  const registered = await request('POST', '/auth/register', {
+    hoTen: 'Recovery User',
+    email,
+    matKhau: 'Original123!',
+  });
+  assert.equal(registered.status, 201, JSON.stringify(registered));
+  assert.equal(registered.data.token, undefined);
+  assert.equal((await request('POST', '/auth/login', { email, matKhau: 'Original123!' })).status, 403);
+  assert.equal(
+    (await request('POST', '/auth/verify-email', { token: '0'.repeat(64) })).status,
+    400,
+  );
+  const verifyMail = hopThuKiemThu.findLast(
+    (item) => item.den === email && item.loai === 'EMAIL_VERIFY',
+  );
+  assert.match(verifyMail.duongDan, /^cookmate:\/\/xac-minh-email\?token=/);
+  assert.equal(
+    (await request('POST', '/auth/verify-email', { token: verifyMail.token })).status,
+    200,
+  );
+  assert.equal(
+    (await request('POST', '/auth/verify-email', { token: verifyMail.token })).status,
+    400,
+  );
+  const session = await login(email, 'Original123!');
+  const emailCount = hopThuKiemThu.length;
+  assert.equal(
+    (await request('POST', '/auth/forgot-password', { email: 'missing@test.local' })).status,
+    200,
+  );
+  assert.equal(hopThuKiemThu.length, emailCount);
+  assert.equal((await request('POST', '/auth/forgot-password', { email })).status, 200);
+  const resetMail = hopThuKiemThu.findLast(
+    (item) => item.den === email && item.loai === 'PASSWORD_RESET',
+  );
+  assert.match(resetMail.duongDan, /^cookmate:\/\/dat-lai-mat-khau\?token=/);
+  assert.equal(
+    (
+      await request('POST', '/auth/reset-password', {
+        token: resetMail.token,
+        matKhauMoi: 'Replacement123!',
+      })
+    ).status,
+    200,
+  );
+  assert.equal((await request('GET', '/auth/me', undefined, session)).status, 401);
+  assert.equal(
+    (
+      await request('POST', '/auth/reset-password', {
+        token: resetMail.token,
+        matKhauMoi: 'AnotherPassword123!',
+      })
+    ).status,
+    400,
+  );
+  assert.equal((await request('POST', '/auth/login', { email, matKhau: 'Original123!' })).status, 401);
+  assert.ok(await login(email, 'Replacement123!'));
 });
 test('OAuth validates state, redirect, signed identity, proof key and one-time ticket', async () => {
   const service = require('../src/services/customerAuth');
@@ -387,6 +453,48 @@ test('notification recipient validation and read ownership', async () => {
   const n = r.data.thongBao.idThongBao;
   assert.equal((await request('PATCH', `/thong-bao/${n}/read`, {}, user)).status, 200);
   assert.equal((await request('GET', '/thong-bao?daDoc=0', undefined, user)).data.length, 0);
+});
+test('registered devices receive real Expo push payloads and can be disabled', async () => {
+  const pushToken = 'ExponentPushToken[test-user-device-123]';
+  const registered = await request(
+    'POST',
+    '/thong-bao/thiet-bi',
+    { token: pushToken, nenTang: 'android', maThietBi: 'test-device' },
+    user,
+  );
+  assert.equal(registered.status, 201, JSON.stringify(registered));
+  const originalFetch = global.fetch;
+  let pushPayload;
+  global.fetch = async (url, options) => {
+    if (String(url) === 'https://exp.host/--/api/v2/push/send') {
+      pushPayload = JSON.parse(options.body);
+      return Response.json({ data: pushPayload.map(() => ({ status: 'ok', id: 'ticket-1' })) });
+    }
+    return originalFetch(url, options);
+  };
+  try {
+    const sent = await request(
+      'POST',
+      '/thong-bao',
+      {
+        tieuDe: 'Món mới',
+        noiDung: 'Có một công thức mới dành cho bạn.',
+        idNguoiDungs: [(await request('GET', '/auth/me', undefined, user)).data.idNguoiDung],
+      },
+      admin,
+    );
+    assert.equal(sent.status, 201, JSON.stringify(sent));
+    assert.equal(sent.data.push.daGui, 1);
+    assert.equal(pushPayload[0].to, pushToken);
+    assert.equal(pushPayload[0].title, 'Món mới');
+  } finally {
+    global.fetch = originalFetch;
+  }
+  assert.equal((await request('DELETE', '/thong-bao/thiet-bi', undefined, user)).status, 200);
+  assert.equal(
+    await db.ThietBiThongBao.count({ where: { token: pushToken, hoatDong: 1 } }),
+    0,
+  );
 });
 test('upload rejects forged MIME and reencodes valid image with safe extension', async () => {
   const fake = new FormData();

@@ -19,6 +19,7 @@ const ChiTietLichSuNau = require('./ChiTietLichSuNau');
 
 const ThongBao = require('./ThongBao');
 const ThongBaoNguoiDung = require('./ThongBaoNguoiDung');
+const ThietBiThongBao = require('./ThietBiThongBao');
 
 const NhatKyHeThong = require('./NhatKyHeThong');
 
@@ -327,6 +328,17 @@ ThongBao.belongsToMany(NguoiDung, {
   as: 'nguoiDungs',
 });
 
+NguoiDung.hasMany(ThietBiThongBao, {
+  foreignKey: 'idNguoiDung',
+  as: 'thietBiThongBaos',
+  onDelete: 'CASCADE',
+});
+
+ThietBiThongBao.belongsTo(NguoiDung, {
+  foreignKey: 'idNguoiDung',
+  as: 'nguoiDung',
+});
+
 // ======================================================
 // 18. NguoiDung - NhatKyHeThong
 // ======================================================
@@ -363,5 +375,6 @@ module.exports = {
   ChiTietLichSuNau,
   ThongBao,
   ThongBaoNguoiDung,
+  ThietBiThongBao,
   NhatKyHeThong,
 };

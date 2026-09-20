@@ -2,12 +2,15 @@ import { useState } from 'react'
 import { Pressable, Text, View } from 'react-native'
 import { useXacThuc } from '../nguCanh/NguCanhXacThuc'
 import { goiApi } from '../dichVu/KetNoiApi'
+import { dangKyThongBaoDay } from '../dichVu/ThongBaoDay'
 import { Nut, TruongNhap, DauTrang, BieuTuong, LoiMoiDangNhap, ThongDiep, ManHinh } from '../thanhPhan/GiaoDien'
 import { mauSac, kieuDang as s } from '../ChuDe'
 export default function CaNhan({ navigation }) {
   const { nguoiDung, dangXuat, loiPhien } = useXacThuc(),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState('')
+    [error, setError] = useState(''),
+    [dangBatPush, datDangBatPush] = useState(false),
+    [ketQuaPush, datKetQuaPush] = useState('')
   async function leave() {
     setBusy(true)
     try {
@@ -16,6 +19,21 @@ export default function CaNhan({ navigation }) {
       setError(e.message)
     } finally {
       setBusy(false)
+    }
+  }
+  async function batThongBaoDay() {
+    datDangBatPush(true)
+    datKetQuaPush('')
+    setError('')
+    try {
+      const token = await dangKyThongBaoDay(true)
+      if (!token)
+        setError('Thiết bị không hỗ trợ hoặc bạn chưa cấp quyền nhận thông báo.')
+      else datKetQuaPush('Đã bật push notification cho thiết bị này.')
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      datDangBatPush(false)
     }
   }
   return (
@@ -77,6 +95,15 @@ export default function CaNhan({ navigation }) {
                 </Pressable>
               ))}
           </View>
+          <Nut
+            title="Bật thông báo đẩy"
+            secondary
+            icon="notifications-outline"
+            busy={dangBatPush}
+            onPress={batThongBaoDay}
+            style={{ marginBottom: 12 }}
+          />
+          <ThongDiep success>{ketQuaPush}</ThongDiep>
           <ThongDiep>{error}</ThongDiep>
           <Nut
             title="Đăng xuất khỏi các thiết bị"

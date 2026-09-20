@@ -1,4 +1,9 @@
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native'
+import { useEffect } from 'react'
+import {
+  NavigationContainer,
+  DefaultTheme,
+  createNavigationContainerRef,
+} from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -14,6 +19,8 @@ import ChiTietMonAn from '../manHinh/ChiTietMonAn'
 import NauAn from '../manHinh/NauAn'
 import ThongBao from '../manHinh/ThongBao'
 import CaNhan, { ChinhSuaCaNhan } from '../manHinh/CaNhan'
+import KhoiPhucTaiKhoan from '../manHinh/KhoiPhucTaiKhoan'
+import { langNgheMoThongBao, layThongBaoDaMoUngDung } from '../dichVu/ThongBaoDay'
 const NganXep: any = createNativeStackNavigator(),
   ThanhTab: any = createBottomTabNavigator()
 const chuDeDieuHuong = {
@@ -26,6 +33,16 @@ const chuDeDieuHuong = {
     text: mauSac.ink,
     border: mauSac.border,
     notification: mauSac.accent,
+  },
+}
+const thamChieuDieuHuong = createNavigationContainerRef<any>()
+const lienKetSau = {
+  prefixes: ['cookmate://'],
+  config: {
+    screens: {
+      XacMinhEmail: 'xac-minh-email',
+      DatLaiMatKhau: 'dat-lai-mat-khau',
+    },
   },
 }
 const bieuTuongTheoManHinh = {
@@ -65,6 +82,13 @@ function ThanhDieuHuong() {
 }
 export default function DieuHuongUngDung() {
   const { dangTai } = useXacThuc()
+  useEffect(
+    () =>
+      langNgheMoThongBao(() => {
+        if (thamChieuDieuHuong.isReady()) thamChieuDieuHuong.navigate('ThongBao')
+      }),
+    [],
+  )
   if (dangTai)
     return (
       <View
@@ -79,7 +103,16 @@ export default function DieuHuongUngDung() {
       </View>
     )
   return (
-    <NavigationContainer theme={chuDeDieuHuong}>
+    <NavigationContainer
+      ref={thamChieuDieuHuong}
+      theme={chuDeDieuHuong}
+      linking={lienKetSau}
+      onReady={() => {
+        layThongBaoDaMoUngDung().then((duLieu) => {
+          if (duLieu && thamChieuDieuHuong.isReady()) thamChieuDieuHuong.navigate('ThongBao')
+        }).catch(() => {})
+      }}
+    >
       <NganXep.Navigator
         screenOptions={{ headerShown: false, contentStyle: { backgroundColor: mauSac.background } }}
       >
@@ -91,6 +124,9 @@ export default function DieuHuongUngDung() {
         <NganXep.Screen name="ThongBao" component={ThongBao} />
         <NganXep.Screen name="SuaHoSo" component={ChinhSuaCaNhan} />
         <NganXep.Screen name="DoiMatKhau" component={ChinhSuaCaNhan} />
+        <NganXep.Screen name="QuenMatKhau" component={KhoiPhucTaiKhoan} />
+        <NganXep.Screen name="DatLaiMatKhau" component={KhoiPhucTaiKhoan} />
+        <NganXep.Screen name="XacMinhEmail" component={KhoiPhucTaiKhoan} />
       </NganXep.Navigator>
     </NavigationContainer>
   )
