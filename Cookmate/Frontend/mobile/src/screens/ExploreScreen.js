@@ -29,7 +29,7 @@ export default function ExploreScreen({ route }) {
     setCategory(route.params?.category || '')
     setPage(1)
   }, [route.params?.q, route.params?.category])
-  const categories = useResource('/danh-muc?limit=${limit}0'),
+  const categories = useResource(`/danh-muc?limit=${limit * 2}`),
     r = useResource(
       `/mon-an?limit=${limit}&page=${page}&q=${encodeURIComponent(search)}${category ? `&idDanhMuc=${category}` : ''}`,
     )
@@ -101,13 +101,13 @@ export default function ExploreScreen({ route }) {
           <Pressable
             key={c.idDanhMuc}
             onPress={() => {
-              setCategory(c.idDanhMuc)
+              setCategory(String(c.idDanhMuc))
               setPage(1)
             }}
-            style={[s.chip, category === c.idDanhMuc && s.chipActive]}
+            style={[s.chip, category === String(c.idDanhMuc) && s.chipActive]}
           >
             <Text
-              style={[s.chipText, category === c.idDanhMuc && s.chipTextActive]}
+              style={[s.chipText, category === String(c.idDanhMuc) && s.chipTextActive]}
             >
               {c.tenDanhMuc}
             </Text>
