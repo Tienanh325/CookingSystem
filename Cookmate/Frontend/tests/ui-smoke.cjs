@@ -212,6 +212,20 @@ async function main() {
   await mobile.goto(base);
   await expect(mobile.getByText('Hôm nay mình', { exact: false })).toBeVisible({ timeout: 30000 });
   await mobile.screenshot({ path: path.join(out, 'mobile-home.png'), fullPage: true });
+  await mobile.getByRole('tab', { name: /Khám phá/ }).click();
+  await mobile.getByLabel('Tìm món ăn', { exact: true }).fill('Cơm gà');
+  await mobile.getByRole('button', { name: 'Tìm kiếm', exact: true }).click();
+  await expect(
+    mobile.getByRole('button', { name: 'Xem món Cơm gà gừng ấm áp', exact: true }),
+  ).toBeVisible();
+  await mobile.getByRole('button', { name: 'Bộ lọc tìm kiếm', exact: true }).click();
+  await mobile.getByRole('radio', { name: 'Dễ', exact: true }).click();
+  await mobile.getByRole('checkbox', { name: 'Gạo', exact: true }).click();
+  await expect(
+    mobile.getByRole('button', { name: 'Xem món Cơm gà gừng ấm áp', exact: true }),
+  ).toBeVisible();
+  await mobile.screenshot({ path: path.join(out, 'mobile-search.png'), fullPage: true });
+  await mobile.getByRole('tab', { name: /Bếp nhà/ }).click();
   await mobile.getByRole('button', { name: 'Xem món Cơm gà gừng ấm áp', exact: true }).click();
   await expect(mobile.getByText('Nguyên liệu chuẩn bị', { exact: true })).toBeVisible();
   await mobile.getByRole('button', { name: 'Lưu yêu thích', exact: true }).click();

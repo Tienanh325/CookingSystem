@@ -23,9 +23,9 @@ Mở QR bằng Expo Go tương thích SDK của dự án; cho phép kết nối 
 
 Khám phá, yêu thích, lịch sử và thông báo có phân trang trước/sau, tổng kết quả và chọn 5/10/20 mục (mặc định 5). Đổi trang cuộn lên đầu danh sách; đổi số mục quay về trang 1. Bình luận và đánh giá phân trang riêng, 5 mục/trang. Sau xóa, trang vượt quá tổng số trang tự điều chỉnh về trang hợp lệ.
 
-Khám phá món, tìm theo tên/danh mục, chi tiết và đổi khẩu phần, đăng ký/đăng nhập, yêu thích, nấu từng bước kèm bộ đếm giờ, lịch sử nấu, đánh giá và bình luận/trả lời, thông báo đã đọc, sửa hồ sơ, đổi mật khẩu và đăng xuất. Khách chưa đăng nhập vẫn xem được món công khai. Token native lưu bằng SecureStore; bản web xem thử dùng sessionStorage.
+Khám phá món, tìm theo từ khóa và lọc nâng cao theo danh mục, độ khó, thời gian, nhiều nguyên liệu; sắp xếp theo độ mới, độ phổ biến, đánh giá, thời gian hoặc tên. Ứng dụng còn có chi tiết và đổi khẩu phần, đăng ký/đăng nhập, yêu thích, nấu từng bước kèm bộ đếm giờ, lịch sử nấu, đánh giá và bình luận/trả lời, thông báo đã đọc, sửa hồ sơ, đổi mật khẩu và đăng xuất. Khách chưa đăng nhập vẫn xem được món công khai. Token native lưu bằng SecureStore; bản web xem thử dùng sessionStorage.
 
-Theo yêu cầu, không có màn hình đăng công thức, cộng đồng hoặc tìm kiếm nâng cao. Giao diện kem/cam dựa trên ảnh tham chiếu; chưa đối chiếu được toàn bộ thiết kế từ link Stitch.
+Theo yêu cầu, không có màn hình đăng công thức hoặc cộng đồng. Giao diện kem/cam dựa trên ảnh tham chiếu; chưa đối chiếu được toàn bộ thiết kế từ link Stitch.
 
 ```powershell
 npm run check
