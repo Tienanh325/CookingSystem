@@ -1,0 +1,14 @@
+const router = require('express').Router();
+const c = require('../controllers/LichAnController');
+const { authenticate } = require('../middleware/authMiddleware');
+router.use(authenticate);
+router.get('/', c.list);
+router.post('/', c.create);
+router.get('/:id', c.detail);
+router.delete('/:id', c.remove);
+router.post('/:id/bua-an', c.addMeal);
+router.delete('/:id/bua-an/:mealId', c.removeMeal);
+router.get('/:id/danh-gia', c.evaluate);
+router.get('/:id/danh-sach-mua-sam', c.shopping);
+router.post('/:id/tao-tu-dong', c.autoGenerate);
+module.exports = router;

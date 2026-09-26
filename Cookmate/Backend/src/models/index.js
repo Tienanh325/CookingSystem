@@ -28,6 +28,8 @@ const GoiMucTieuAnUong = require('./GoiMucTieuAnUong');
 const DangKyDichVu = require('./DangKyDichVu');
 const NguoiDungMucTieu = require('./NguoiDungMucTieu');
 const CongThucDaMo = require('./CongThucDaMo');
+const LichAn = require('./LichAn');
+const BuaAnTrongLich = require('./BuaAnTrongLich');
 
 // ======================================================
 // 1. VaiTro - NguoiDung
@@ -402,6 +404,13 @@ CongThucDaMo.belongsTo(NguoiDung, { foreignKey: 'idNguoiDung', as: 'nguoiDung' }
 MonAn.hasMany(CongThucDaMo, { foreignKey: 'idMonAn', as: 'luotMoDauTiens' });
 CongThucDaMo.belongsTo(MonAn, { foreignKey: 'idMonAn', as: 'monAn' });
 
+NguoiDung.hasMany(LichAn, { foreignKey: 'idNguoiDung', as: 'lichAns' });
+LichAn.belongsTo(NguoiDung, { foreignKey: 'idNguoiDung', as: 'nguoiDung' });
+LichAn.hasMany(BuaAnTrongLich, { foreignKey: 'idLichAn', as: 'buaAns', onDelete: 'CASCADE' });
+BuaAnTrongLich.belongsTo(LichAn, { foreignKey: 'idLichAn', as: 'lichAn' });
+MonAn.hasMany(BuaAnTrongLich, { foreignKey: 'idMonAn', as: 'buaAnDaXep' });
+BuaAnTrongLich.belongsTo(MonAn, { foreignKey: 'idMonAn', as: 'monAn' });
+
 // ======================================================
 // Export tất cả Model
 // ======================================================
@@ -432,4 +441,6 @@ module.exports = {
   DangKyDichVu,
   NguoiDungMucTieu,
   CongThucDaMo,
+  LichAn,
+  BuaAnTrongLich,
 };

@@ -324,6 +324,29 @@ test('recipe nutrition is calculated from ingredient weight per serving', async 
   assert.equal(detail.data.dinhDuong.moiKhauPhan.nangLuongKcal, 130);
   assert.equal(detail.data.dinhDuong.moiKhauPhan.proteinG, 2.7);
 });
+test('meal calendar supports manual planning, evaluation and Pro automation', async () => {
+  const plan = await request('POST', '/lich-an', {
+    tenLich: 'Tuần kiểm thử', tuNgay: '2026-09-28', denNgay: '2026-10-04', mucTieuKcalMoiNgay: 1800,
+  }, user);
+  assert.equal(plan.status, 201, JSON.stringify(plan));
+  const meal = await request('POST', `/lich-an/${plan.data.idLichAn}/bua-an`, {
+    idMonAn: recipe.idMonAn, ngay: '2026-09-28', loaiBua: 'TRUA', soKhauPhan: 1,
+  }, user);
+  assert.equal(meal.status, 201, JSON.stringify(meal));
+  const evaluation = await request('GET', `/lich-an/${plan.data.idLichAn}/danh-gia`, undefined, user);
+  assert.equal(evaluation.status, 200, JSON.stringify(evaluation));
+  assert.equal(evaluation.data.theoNgay[0].nangLuongKcal, 130);
+  assert.equal((await request('GET', `/lich-an/${plan.data.idLichAn}/danh-sach-mua-sam`, undefined, user)).status, 403);
+  const pro = await db.GoiDichVu.findOne({ where: { maGoi: 'PRO' } });
+  const account = (await request('GET', '/auth/me', undefined, user)).data;
+  await db.DangKyDichVu.create({ idNguoiDung: account.idNguoiDung, idGoiDichVu: pro.idGoiDichVu, thoiGianKetThuc: new Date(Date.now() + 86400000) });
+  const generated = await request('POST', `/lich-an/${plan.data.idLichAn}/tao-tu-dong`, {}, user);
+  assert.equal(generated.status, 200, JSON.stringify(generated));
+  assert.equal(generated.data.buaAns.length, 21);
+  const shopping = await request('GET', `/lich-an/${plan.data.idLichAn}/danh-sach-mua-sam`, undefined, user);
+  assert.equal(shopping.status, 200, JSON.stringify(shopping));
+  assert.ok(shopping.data[0].soLuong > 0);
+});
 test('users submit owned recipe drafts for admin moderation', async () => {
   const draft = await request(
     'POST',

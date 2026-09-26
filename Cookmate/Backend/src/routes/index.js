@@ -39,5 +39,6 @@ router.use('/nguoi-dung', nguoiDungRoutes);
 router.use('/vai-tro', vaiTroRoutes);
 router.use('/nhat-ky-he-thong', nhatKyHeThongRoutes);
 router.use('/goi-dich-vu', goiDichVuRoutes);
+router.use('/lich-an', require('./lichAnRoutes'));
 
 module.exports = router;
