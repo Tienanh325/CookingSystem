@@ -55,6 +55,12 @@ const recipeDetailIncludes = (phienBan) => [
     separate: true,
     order: [['thuTu', 'ASC']],
   },
+  {
+    model: db.NguoiDung,
+    as: 'tacGia',
+    attributes: ['idNguoiDung', 'hoTen', 'anhDaiDien'],
+    required: false,
+  },
 ];
 
 const recipeListIncludes = () => [
@@ -83,6 +89,7 @@ const fetchRecipeById = async (idMonAn, activeOnly = true) => {
 
   if (activeOnly) {
     where.trangThai = 1;
+    where.trangThaiDuyet = 'DA_DUYET';
   }
 
   const recipe = await db.MonAn.findOne({ where });
@@ -118,7 +125,9 @@ const buildListWhere = async (query, admin = false) => {
     ? query.trangThai === undefined
       ? {}
       : { trangThai: Number(query.trangThai) }
-    : { trangThai: 1 };
+    : { trangThai: 1, trangThaiDuyet: 'DA_DUYET' };
+
+  if (admin && query.trangThaiDuyet) where.trangThaiDuyet = normalizeText(query.trangThaiDuyet);
 
   const keyword = normalizeText(query.q || query.search);
 
@@ -407,6 +416,100 @@ const replaceRecipeChildren = async (recipe, body, transaction) => {
 };
 
 const MonAnController = {
+  listMine: asyncHandler(async (req, res) => {
+    const { page, limit, offset } = getPagination(req.query);
+    const result = await db.MonAn.findAndCountAll({
+      where: { idTacGia: req.auth.idNguoiDung },
+      include: recipeListIncludes(),
+      order: [['ngayCapNhat', 'DESC'], ['idMonAn', 'DESC']],
+      distinct: true,
+      limit,
+      offset,
+    });
+    return sendSuccess(
+      res,
+      200,
+      'Your recipes loaded',
+      result.rows,
+      getPagingMeta(result.count, page, limit),
+    );
+  }),
+
+  createMine: asyncHandler(async (req, res) => {
+    const payload = {
+      ...buildRecipePayload(req.body),
+      idTacGia: req.auth.idNguoiDung,
+      nguonNoiDung: 'NGUOI_DUNG',
+      trangThaiDuyet: 'NHAP',
+      trangThai: 0,
+    };
+    if (!(await db.DanhMuc.findOne({ where: { idDanhMuc: payload.idDanhMuc, trangThai: 1 } })))
+      return sendError(res, 400, 'Danh mục không tồn tại.');
+    const transaction = await sequelize.transaction();
+    try {
+      const monAn = await db.MonAn.create(payload, { transaction });
+      await replaceRecipeChildren(monAn, req.body, transaction);
+      await audit(req, 'CREATE_DRAFT', 'MonAn', monAn.idMonAn, transaction);
+      await transaction.commit();
+      return sendSuccess(res, 201, 'Đã lưu bản nháp.', await fetchRecipeById(monAn.idMonAn, false));
+    } catch (error) {
+      if (!transaction.finished) await transaction.rollback();
+      throw error;
+    }
+  }),
+
+  updateMine: asyncHandler(async (req, res) => {
+    const monAn = await db.MonAn.findOne({
+      where: { idMonAn: req.params.id, idTacGia: req.auth.idNguoiDung },
+    });
+    if (!monAn) return sendError(res, 404, 'Không tìm thấy công thức của bạn.');
+    if (!['NHAP', 'TU_CHOI'].includes(monAn.trangThaiDuyet))
+      return sendError(res, 409, 'Chỉ có thể sửa bản nháp hoặc bài bị từ chối.');
+    const transaction = await sequelize.transaction();
+    try {
+      await monAn.update(
+        {
+          ...buildRecipePayload(req.body, monAn),
+          trangThai: 0,
+          trangThaiDuyet: 'NHAP',
+          lyDoTuChoi: null,
+          ngayCapNhat: new Date(),
+        },
+        { transaction },
+      );
+      await replaceRecipeChildren(monAn, req.body, transaction);
+      await audit(req, 'UPDATE_DRAFT', 'MonAn', monAn.idMonAn, transaction);
+      await transaction.commit();
+      return sendSuccess(res, 200, 'Đã cập nhật bản nháp.', await fetchRecipeById(monAn.idMonAn, false));
+    } catch (error) {
+      if (!transaction.finished) await transaction.rollback();
+      throw error;
+    }
+  }),
+
+  submitMine: asyncHandler(async (req, res) => {
+    const monAn = await db.MonAn.findOne({
+      where: { idMonAn: req.params.id, idTacGia: req.auth.idNguoiDung },
+    });
+    if (!monAn) return sendError(res, 404, 'Không tìm thấy công thức của bạn.');
+    if (!['NHAP', 'TU_CHOI'].includes(monAn.trangThaiDuyet))
+      return sendError(res, 409, 'Công thức không ở trạng thái có thể gửi duyệt.');
+    const [ingredientCount, stepCount] = await Promise.all([
+      db.MonAnNguyenLieu.count({ where: { idMonAn: monAn.idMonAn } }),
+      db.BuocNau.count({ where: { idMonAn: monAn.idMonAn, phienBan: monAn.phienBan } }),
+    ]);
+    if (!ingredientCount || !stepCount)
+      return sendError(res, 400, 'Cần có nguyên liệu và ít nhất một bước nấu trước khi gửi duyệt.');
+    await sequelize.transaction(async (transaction) => {
+      await monAn.update(
+        { trangThaiDuyet: 'CHO_DUYET', ngayGuiDuyet: new Date(), lyDoTuChoi: null },
+        { transaction },
+      );
+      await audit(req, 'SUBMIT_REVIEW', 'MonAn', monAn.idMonAn, transaction);
+    });
+    return sendSuccess(res, 200, 'Công thức đã được gửi duyệt.', monAn);
+  }),
+
   list: asyncHandler(async (req, res) => {
     const { page, limit, offset } = getPagination(req.query);
     const where = await buildListWhere(req.query, req.isAdminView);
@@ -445,7 +548,14 @@ const MonAnController = {
   }),
 
   create: asyncHandler(async (req, res) => {
-    const payload = buildRecipePayload(req.body);
+    const payload = {
+      ...buildRecipePayload(req.body),
+      idTacGia: req.auth.idNguoiDung,
+      idNguoiDuyet: req.auth.idNguoiDung,
+      nguonNoiDung: 'BIEN_TAP',
+      trangThaiDuyet: 'DA_DUYET',
+      ngayDuyet: new Date(),
+    };
 
     const danhMuc = await db.DanhMuc.findOne({
       where: {
