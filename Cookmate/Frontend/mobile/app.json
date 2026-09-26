@@ -13,6 +13,14 @@
           "color": "#BD420B",
           "defaultChannel": "default"
         }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Cho phép Cookmate dùng micro để tìm món ăn bằng giọng nói.",
+          "speechRecognitionPermission": "Cho phép Cookmate nhận dạng giọng nói để tìm công thức.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
       ]
     ],
     "ios": {
@@ -21,7 +29,7 @@
     },
     "android": {
       "package": "com.cookmate.mobile",
-      "permissions": ["POST_NOTIFICATIONS"]
+      "permissions": ["POST_NOTIFICATIONS", "RECORD_AUDIO"]
     },
     "scheme": "cookmate"
   }
