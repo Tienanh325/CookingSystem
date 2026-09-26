@@ -20,6 +20,8 @@ import NauAn from '../manHinh/NauAn'
 import ThongBao from '../manHinh/ThongBao'
 import CaNhan, { ChinhSuaCaNhan } from '../manHinh/CaNhan'
 import KhoiPhucTaiKhoan from '../manHinh/KhoiPhucTaiKhoan'
+import BaiDangCuaToi from '../manHinh/BaiDangCuaToi'
+import DangCongThuc from '../manHinh/DangCongThuc'
 import { langNgheMoThongBao, layThongBaoDaMoUngDung } from '../dichVu/ThongBaoDay'
 const NganXep: any = createNativeStackNavigator(),
   ThanhTab: any = createBottomTabNavigator()
@@ -127,6 +129,8 @@ export default function DieuHuongUngDung() {
         <NganXep.Screen name="QuenMatKhau" component={KhoiPhucTaiKhoan} />
         <NganXep.Screen name="DatLaiMatKhau" component={KhoiPhucTaiKhoan} />
         <NganXep.Screen name="XacMinhEmail" component={KhoiPhucTaiKhoan} />
+        <NganXep.Screen name="BaiDangCuaToi" component={BaiDangCuaToi} />
+        <NganXep.Screen name="DangCongThuc" component={DangCongThuc} />
       </NganXep.Navigator>
     </NavigationContainer>
   )
