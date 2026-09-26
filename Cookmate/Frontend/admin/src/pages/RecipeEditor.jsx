@@ -8,6 +8,9 @@ const blank = {
   idDanhMuc: '',
   moTa: '',
   gioiThieu: '',
+  tenDauBep: '',
+  videoHuongDan: '',
+  capTruyCapToiThieu: 'FREE',
   anhDaiDien: '',
   doKho: 'DE',
   khauPhan: 2,
@@ -198,6 +201,12 @@ export default function RecipeEditor() {
                   />
                 ))}
               </div>
+            </section>
+            <section className="panel form-panel">
+              <div className="panel-heading"><h2>Nội dung theo gói</h2></div>
+              <Field label="Đầu bếp" name="tenDauBep" value={form.tenDauBep || ''} onChange={(e) => update('tenDauBep', e.target.value)} />
+              <Field label="Video hướng dẫn" name="videoHuongDan" type="url" value={form.videoHuongDan || ''} onChange={(e) => update('videoHuongDan', e.target.value)} />
+              <Field label="Cấp truy cập tối thiểu"><select value={form.capTruyCapToiThieu || 'FREE'} onChange={(e) => update('capTruyCapToiThieu', e.target.value)}><option value="FREE">Miễn phí</option><option value="BASIC">Basic</option><option value="PRO">Pro</option><option value="CHEF">Chef</option></select></Field>
             </section>
             <section className="panel form-panel">
               <div className="panel-heading">

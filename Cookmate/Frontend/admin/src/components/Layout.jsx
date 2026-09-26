@@ -18,6 +18,7 @@ import {
   Search,
   X,
   ListChecks,
+  CreditCard,
 } from 'lucide-react'
 import { useAuth } from '../context/auth'
 const groups = [
@@ -35,6 +36,7 @@ const groups = [
     'CỘNG ĐỒNG & HỆ THỐNG',
     [
       ['/users', 'Người dùng', Users],
+      ['/payments', 'Thanh toán', CreditCard],
       ['/roles', 'Vai trò', ShieldCheck],
       ['/comments', 'Bình luận', MessageSquare],
       ['/reviews', 'Đánh giá', Star],
