@@ -517,6 +517,50 @@ const MonAnController = {
     return sendSuccess(res, 200, 'Công thức đã được gửi duyệt.', monAn);
   }),
 
+  reviewSubmission: asyncHandler(async (req, res) => {
+    const monAn = await db.MonAn.findByPk(req.params.id);
+    if (!monAn) return sendError(res, 404, 'Không tìm thấy công thức.');
+    if (monAn.trangThaiDuyet !== 'CHO_DUYET')
+      return sendError(res, 409, 'Công thức không ở trạng thái chờ duyệt.');
+    const approved = req.body.quyetDinh === 'DUYET';
+    if (!approved && !req.body.lyDoTuChoi)
+      return sendError(res, 400, 'Cần nhập lý do từ chối.');
+    if (approved) {
+      const [ingredientCount, stepCount] = await Promise.all([
+        db.MonAnNguyenLieu.count({ where: { idMonAn: monAn.idMonAn } }),
+        db.BuocNau.count({ where: { idMonAn: monAn.idMonAn, phienBan: monAn.phienBan } }),
+      ]);
+      if (!ingredientCount || !stepCount)
+        return sendError(res, 400, 'Không thể duyệt công thức thiếu nguyên liệu hoặc bước nấu.');
+    }
+    await sequelize.transaction(async (transaction) => {
+      await monAn.update(
+        {
+          trangThaiDuyet: approved ? 'DA_DUYET' : 'TU_CHOI',
+          trangThai: approved ? 1 : 0,
+          idNguoiDuyet: req.auth.idNguoiDung,
+          ngayDuyet: new Date(),
+          lyDoTuChoi: approved ? null : req.body.lyDoTuChoi,
+          ngayCapNhat: new Date(),
+        },
+        { transaction },
+      );
+      await audit(
+        req,
+        approved ? 'APPROVE_SUBMISSION' : 'REJECT_SUBMISSION',
+        'MonAn',
+        monAn.idMonAn,
+        transaction,
+      );
+    });
+    return sendSuccess(
+      res,
+      200,
+      approved ? 'Đã duyệt và công khai công thức.' : 'Đã từ chối công thức.',
+      await fetchRecipeById(monAn.idMonAn, false),
+    );
+  }),
+
   list: asyncHandler(async (req, res) => {
     const { page, limit, offset } = getPagination(req.query);
     const where = await buildListWhere(req.query, req.isAdminView);
