@@ -42,6 +42,10 @@ Dữ liệu trải nghiệm có thể nạp bằng `npm run seed:demo`, kiểm t
 - Bình luận hỗ trợ một cấp trả lời; ẩn bình luận gốc cũng ẩn trả lời.
 - Upload ảnh JPEG/PNG/WebP tối đa 5 MB, giải mã thực tế và tái mã hóa WebP; không tin MIME do client gửi.
 - Ghi nhật ký thao tác quản trị; kiểm tra dữ liệu đầu vào, người nhận thông báo và giới hạn tần suất xác thực/upload.
+- Gói miễn phí giới hạn 10 công thức chưa từng mở mỗi ngày; công thức đã mở không tính lại. Cấp truy cập FREE/BASIC/PRO/CHEF được kiểm tra khi mở chi tiết.
+- Lịch ăn thủ công dùng được sau đăng nhập; tạo tự động và danh sách mua sắm yêu cầu Pro/Chef. Dinh dưỡng được ước tính từ dữ liệu mỗi 100 g và khối lượng quy đổi của nguyên liệu.
+- Thanh toán `/api/thanh-toan` đang ở chế độ đối soát thủ công; chỉ admin xác nhận tại `/api/admin/thanh-toan/:id/xac-nhan`. Không tự kích hoạt quyền chỉ dựa trên dữ liệu từ client.
+- `/api/tu-van-ai` chỉ dành cho Chef và hiện dùng bộ quy tắc minh bạch (`COOKMATE_RULES_V1`), luôn kèm cảnh báo không thay thế tư vấn y tế.
 
 Các endpoint quản trị mở rộng nằm dưới `/api/admin`; các route hiện có tiếp tục nằm trong `src/routes`. Thông báo được lưu trong ứng dụng và đồng thời gửi push qua Expo tới các thiết bị đã đăng ký.
 
