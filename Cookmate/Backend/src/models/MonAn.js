@@ -14,7 +14,15 @@ const MonAn = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    idTacGia: { type: DataTypes.INTEGER, allowNull: true },
+    idNguoiDuyet: { type: DataTypes.INTEGER, allowNull: true },
     phienBan: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 },
+    nguonNoiDung: { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'BIEN_TAP' },
+    trangThaiDuyet: { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'DA_DUYET' },
+    lyDoTuChoi: { type: DataTypes.STRING(1000), allowNull: true },
+    ngayGuiDuyet: { type: DataTypes.DATE, allowNull: true },
+    ngayDuyet: { type: DataTypes.DATE, allowNull: true },
+    capTruyCapToiThieu: { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'FREE' },
 
     tenMonAn: {
       type: DataTypes.STRING(200),
