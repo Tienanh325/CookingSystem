@@ -207,6 +207,11 @@ function validateRequest(req, res, next) {
       nenTang: z.enum(['android', 'ios']),
       maThietBi: z.string().trim().max(191).nullable().optional(),
     });
+  else if (/^\/bai-dang\/\d+\/kiem-duyet$/.test(path))
+    schema = z.object({
+      quyetDinh: z.enum(['DUYET', 'TU_CHOI']),
+      lyDoTuChoi: optionalText(1000),
+    });
   if (!schema) return next();
   const result = schema.safeParse(req.body);
   if (!result.success)
