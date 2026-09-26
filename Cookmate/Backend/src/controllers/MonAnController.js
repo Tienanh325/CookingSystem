@@ -435,6 +435,13 @@ const MonAnController = {
     );
   }),
 
+  detailMine: asyncHandler(async (req, res) => {
+    const monAn = await fetchRecipeById(req.params.id, false);
+    if (!monAn || Number(monAn.idTacGia) !== Number(req.auth.idNguoiDung))
+      return sendError(res, 404, 'Không tìm thấy công thức của bạn.');
+    return sendSuccess(res, 200, 'Your recipe loaded', monAn);
+  }),
+
   createMine: asyncHandler(async (req, res) => {
     const payload = {
       ...buildRecipePayload(req.body),
