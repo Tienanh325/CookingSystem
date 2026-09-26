@@ -24,6 +24,7 @@ import BaiDangCuaToi from '../manHinh/BaiDangCuaToi'
 import DangCongThuc from '../manHinh/DangCongThuc'
 import LichAn from '../manHinh/LichAn'
 import GoiDichVu from '../manHinh/GoiDichVu'
+import TuVanChef from '../manHinh/TuVanChef'
 import { langNgheMoThongBao, layThongBaoDaMoUngDung } from '../dichVu/ThongBaoDay'
 const NganXep: any = createNativeStackNavigator(),
   ThanhTab: any = createBottomTabNavigator()
@@ -135,6 +136,7 @@ export default function DieuHuongUngDung() {
         <NganXep.Screen name="DangCongThuc" component={DangCongThuc} />
         <NganXep.Screen name="LichSu" component={ThuVien} />
         <NganXep.Screen name="GoiDichVu" component={GoiDichVu} />
+        <NganXep.Screen name="TuVanChef" component={TuVanChef} />
       </NganXep.Navigator>
     </NavigationContainer>
   )
