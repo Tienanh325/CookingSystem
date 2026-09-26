@@ -16,8 +16,12 @@ const NguoiDungMucTieu = sequelize.define(
     tableName: 'NguoiDungMucTieu',
     timestamps: false,
     indexes: [
-      { unique: true, fields: ['idNguoiDung', 'idMucTieuAnUong', 'nguonQuyen'] },
-      { fields: ['idNguoiDung', 'trangThai', 'thoiGianKetThuc'] },
+      {
+        name: 'uq_user_goal_source',
+        unique: true,
+        fields: ['idNguoiDung', 'idMucTieuAnUong', 'nguonQuyen'],
+      },
+      { name: 'ix_user_goal_active', fields: ['idNguoiDung', 'trangThai', 'thoiGianKetThuc'] },
     ],
   },
 );
