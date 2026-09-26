@@ -255,6 +255,24 @@ test('authentication, validation and protected admin API', async () => {
   assert.equal(profile.data.matKhau, undefined);
   assert.equal(profile.data.tokenVersion, undefined);
 });
+test('subscription catalog exposes approved prices and free quota', async () => {
+  const catalog = await request('GET', '/goi-dich-vu');
+  assert.equal(catalog.status, 200, JSON.stringify(catalog));
+  assert.deepEqual(
+    catalog.data.goiDichVus.map((item) => [item.maGoi, item.giaThang]),
+    [
+      ['FREE', 0],
+      ['BASIC', 39000],
+      ['PRO', 79000],
+      ['CHEF', 149000],
+    ],
+  );
+  assert.equal(catalog.data.goiDichVus[0].hanMucCongThucMoiMoiNgay, 10);
+  assert.equal(catalog.data.mucTieuAnUongs.length, 4);
+  const mine = await request('GET', '/goi-dich-vu/me', undefined, user);
+  assert.equal(mine.status, 200);
+  assert.equal(mine.data.goiDichVu.maGoi, 'FREE');
+});
 test('admin creates catalog and publishable recipe; audits persist', async () => {
   category = (await request('POST', '/danh-muc', { tenDanhMuc: 'Món chính' }, admin)).data;
   ingredient = (
