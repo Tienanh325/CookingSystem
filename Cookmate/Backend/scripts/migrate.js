@@ -44,8 +44,9 @@ async function migrate() {
     }
   }
   await sequelize.sync();
+  await require('../src/services/goiDichVu').damBaoDanhMucGoi();
   console.log(
-    'Schema ready: email verification, push devices, token revocation and recipe history.',
+    'Schema ready: authentication, recipe history and subscription catalog.',
   );
 }
 module.exports = migrate;
