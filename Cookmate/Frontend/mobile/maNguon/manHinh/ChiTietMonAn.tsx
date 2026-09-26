@@ -299,6 +299,30 @@ export default function ChiTietMonAn({ route, navigation }) {
                 </View>
               ))}
             </View>
+            {recipe.dinhDuong && (
+              <>
+                <TieuDePhan title="Dinh dưỡng mỗi khẩu phần" />
+                <View style={[s.card, { gap: 10 }]}>
+                  {[
+                    ['Năng lượng', `${recipe.dinhDuong.moiKhauPhan.nangLuongKcal} kcal`],
+                    ['Protein', `${recipe.dinhDuong.moiKhauPhan.proteinG} g`],
+                    ['Carbohydrate', `${recipe.dinhDuong.moiKhauPhan.carbG} g`],
+                    ['Chất béo', `${recipe.dinhDuong.moiKhauPhan.chatBeoG} g`],
+                    ['Chất xơ', `${recipe.dinhDuong.moiKhauPhan.chatXoG} g`],
+                    ['Natri', `${recipe.dinhDuong.moiKhauPhan.natriMg} mg`],
+                  ].map(([label, value]) => (
+                    <View key={label} style={s.between}>
+                      <Text style={s.muted}>{label}</Text>
+                      <Text style={[s.body, { fontWeight: '700' }]}>{value}</Text>
+                    </View>
+                  ))}
+                  {!recipe.dinhDuong.dayDuDuLieu && (
+                    <Text style={[s.small, { color: mauSac.accent }]}>Chưa thể tính đủ do thiếu khối lượng quy đổi của: {recipe.dinhDuong.thieuKhoiLuong.join(', ')}.</Text>
+                  )}
+                  <Text style={s.small}>{recipe.dinhDuong.ghiChu}</Text>
+                </View>
+              </>
+            )}
             <TieuDePhan title="Các bước thực hiện" />
             {recipe.buocNaus.map((step, i) => (
               <View

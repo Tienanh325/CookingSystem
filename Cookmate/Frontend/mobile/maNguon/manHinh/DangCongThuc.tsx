@@ -41,6 +41,7 @@ export default function DangCongThuc({ navigation, route }) {
             idNguyenLieu: item.idNguyenLieu,
             soLuong: String(item.MonAnNguyenLieu.soLuong),
             donVi: item.MonAnNguyenLieu.donVi,
+            khoiLuongGram: String(item.MonAnNguyenLieu.khoiLuongGram || ''),
           })),
           buocNaus: value.buocNaus.map((item) => ({
             huongDan: item.huongDan,
@@ -68,7 +69,7 @@ export default function DangCongThuc({ navigation, route }) {
         ? form.nguyenLieus.filter((row) => row.idNguyenLieu !== item.idNguyenLieu)
         : [
             ...form.nguyenLieus,
-            { idNguyenLieu: item.idNguyenLieu, soLuong: '1', donVi: item.donViMacDinh || 'g' },
+            { idNguyenLieu: item.idNguyenLieu, soLuong: '1', donVi: item.donViMacDinh || 'g', khoiLuongGram: item.donViMacDinh === 'g' ? '1' : '' },
           ],
     )
   }
@@ -87,6 +88,7 @@ export default function DangCongThuc({ navigation, route }) {
         nguyenLieus: form.nguyenLieus.map((row) => ({
           ...row,
           soLuong: Number(row.soLuong),
+          khoiLuongGram: row.khoiLuongGram ? Number(row.khoiLuongGram) : null,
         })),
         buocNaus: form.buocNaus.map((row, index) => ({
           ...row,
@@ -151,6 +153,7 @@ export default function DangCongThuc({ navigation, route }) {
               <TruongNhap label="Số lượng" value={row.soLuong} onChangeText={(v) => updateRow('nguyenLieus', index, 'soLuong', v)} keyboardType="decimal-pad" style={{ flex: 1 }} />
               <TruongNhap label="Đơn vị" value={row.donVi} onChangeText={(v) => updateRow('nguyenLieus', index, 'donVi', v)} style={{ flex: 1 }} />
             </View>
+            <TruongNhap label="Khối lượng quy đổi (gram)" value={row.khoiLuongGram} onChangeText={(v) => updateRow('nguyenLieus', index, 'khoiLuongGram', v)} keyboardType="decimal-pad" />
           </View>
         )
       })}
