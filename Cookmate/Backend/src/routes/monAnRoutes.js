@@ -9,6 +9,12 @@ const { authenticate, authorizeAdmin } = require('../middleware/authMiddleware')
 
 const router = express.Router();
 
+router.get('/cua-toi', authenticate, MonAnController.listMine);
+router.post('/cua-toi', authenticate, MonAnController.createMine);
+router.get('/cua-toi/:id', authenticate, MonAnController.detailMine);
+router.patch('/cua-toi/:id', authenticate, MonAnController.updateMine);
+router.post('/cua-toi/:id/gui-duyet', authenticate, MonAnController.submitMine);
+
 router.get('/', MonAnController.list);
 router.get('/:id', MonAnController.detail);
 router.get('/:id/stats', MonAnController.stats);
