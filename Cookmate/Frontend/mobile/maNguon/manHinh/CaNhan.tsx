@@ -70,6 +70,7 @@ export default function CaNhan({ navigation }) {
             {[
               ['person-outline', 'Thông tin cá nhân', 'SuaHoSo'],
               ['create-outline', 'Công thức của tôi', 'BaiDangCuaToi'],
+              ['time-outline', 'Nhật ký vào bếp', 'LichSu'],
               ['lock-closed-outline', 'Đổi mật khẩu', 'DoiMatKhau'],
               ['notifications-outline', 'Thông báo', 'ThongBao'],
             ]

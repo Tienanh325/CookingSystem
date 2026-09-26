@@ -22,6 +22,7 @@ import CaNhan, { ChinhSuaCaNhan } from '../manHinh/CaNhan'
 import KhoiPhucTaiKhoan from '../manHinh/KhoiPhucTaiKhoan'
 import BaiDangCuaToi from '../manHinh/BaiDangCuaToi'
 import DangCongThuc from '../manHinh/DangCongThuc'
+import LichAn from '../manHinh/LichAn'
 import { langNgheMoThongBao, layThongBaoDaMoUngDung } from '../dichVu/ThongBaoDay'
 const NganXep: any = createNativeStackNavigator(),
   ThanhTab: any = createBottomTabNavigator()
@@ -51,7 +52,7 @@ const bieuTuongTheoManHinh = {
   TrangChu: 'home-outline',
   KhamPha: 'compass-outline',
   YeuThich: 'heart-outline',
-  LichSu: 'time-outline',
+  LichAn: 'calendar-outline',
   CaNhan: 'person-outline',
 }
 function ThanhDieuHuong() {
@@ -77,7 +78,7 @@ function ThanhDieuHuong() {
       <ThanhTab.Screen name="TrangChu" component={TrangChu} options={{ title: 'Bếp nhà' }} />
       <ThanhTab.Screen name="KhamPha" component={KhamPha} options={{ title: 'Khám phá' }} />
       <ThanhTab.Screen name="YeuThich" component={ThuVien} options={{ title: 'Yêu thích' }} />
-      <ThanhTab.Screen name="LichSu" component={ThuVien} options={{ title: 'Lịch sử' }} />
+      <ThanhTab.Screen name="LichAn" component={LichAn} options={{ title: 'Lịch ăn' }} />
       <ThanhTab.Screen name="CaNhan" component={CaNhan} options={{ title: 'Cá nhân' }} />
     </ThanhTab.Navigator>
   )
@@ -131,6 +132,7 @@ export default function DieuHuongUngDung() {
         <NganXep.Screen name="XacMinhEmail" component={KhoiPhucTaiKhoan} />
         <NganXep.Screen name="BaiDangCuaToi" component={BaiDangCuaToi} />
         <NganXep.Screen name="DangCongThuc" component={DangCongThuc} />
+        <NganXep.Screen name="LichSu" component={ThuVien} />
       </NganXep.Navigator>
     </NavigationContainer>
   )
