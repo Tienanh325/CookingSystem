@@ -129,6 +129,11 @@ function validateRequest(req, res, next) {
   if (req.query.doKho && !['DE', 'TRUNG_BINH', 'KHO'].includes(req.query.doKho))
     return sendError(res, 400, 'Độ khó không hợp lệ.');
   if (
+    req.query.trangThaiDuyet &&
+    !['NHAP', 'CHO_DUYET', 'DA_DUYET', 'TU_CHOI'].includes(req.query.trangThaiDuyet)
+  )
+    return sendError(res, 400, 'Trạng thái duyệt không hợp lệ.');
+  if (
     path.startsWith('/lich-su-nau') &&
     req.query.trangThai &&
     !['DANG_NAU', 'HOAN_THANH', 'DA_HUY'].includes(req.query.trangThai)
@@ -167,6 +172,8 @@ function validateRequest(req, res, next) {
   else if (path === '/auth/change-password')
     schema = z.object({ matKhauCu: z.string().min(1).max(200), matKhauMoi: password });
   else if (/^\/mon-an(?:\/\d+)?$/.test(path)) schema = update ? recipe.partial() : recipe;
+  else if (/^\/mon-an\/cua-toi(?:\/\d+)?$/.test(path))
+    schema = update ? recipe.partial() : recipe;
   else if (/^\/danh-muc(?:\/\d+)?$/.test(path)) schema = update ? category.partial() : category;
   else if (/^\/nguyen-lieu(?:\/\d+)?$/.test(path))
     schema = update ? ingredient.partial() : ingredient;
