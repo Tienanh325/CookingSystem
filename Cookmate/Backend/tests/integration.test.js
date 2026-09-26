@@ -347,6 +347,24 @@ test('meal calendar supports manual planning, evaluation and Pro automation', as
   assert.equal(shopping.status, 200, JSON.stringify(shopping));
   assert.ok(shopping.data[0].soLuong > 0);
 });
+test('manual payment confirmation activates Chef and individual goals', async () => {
+  const catalog = (await request('GET', '/goi-dich-vu')).data;
+  const chef = catalog.goiDichVus.find((item) => item.maGoi === 'CHEF');
+  const chefPayment = await request('POST', '/thanh-toan/yeu-cau', { loaiSanPham: 'GOI_DICH_VU', idGoiDichVu: chef.idGoiDichVu }, user);
+  assert.equal(chefPayment.status, 201, JSON.stringify(chefPayment));
+  assert.equal((await request('PATCH', `/admin/thanh-toan/${chefPayment.data.idYeuCauThanhToan}/xac-nhan`, {}, admin)).status, 200);
+  assert.equal((await request('GET', '/goi-dich-vu/me', undefined, user)).data.goiDichVu.maGoi, 'CHEF');
+  const advice = await request('POST', '/tu-van-ai', { cauHoi: 'Tôi nên cân bằng thực đơn thế nào?' }, user);
+  assert.equal(advice.status, 200, JSON.stringify(advice));
+  assert.equal(advice.data.nguon, 'COOKMATE_RULES_V1');
+  assert.equal((await request('POST', '/tu-van-ai', { cauHoi: 'Tư vấn' }, other)).status, 403);
+
+  const goal = catalog.mucTieuAnUongs.find((item) => item.maMucTieu === 'VEGETARIAN');
+  const goalPayment = await request('POST', '/thanh-toan/yeu-cau', { loaiSanPham: 'MUC_TIEU', idMucTieuAnUong: goal.idMucTieuAnUong }, other);
+  assert.equal(goalPayment.status, 201, JSON.stringify(goalPayment));
+  assert.equal((await request('PATCH', `/admin/thanh-toan/${goalPayment.data.idYeuCauThanhToan}/xac-nhan`, {}, admin)).status, 200);
+  assert.equal((await request('GET', '/goi-dich-vu/me', undefined, other)).data.mucTieuAnUongs[0].maMucTieu, 'VEGETARIAN');
+});
 test('users submit owned recipe drafts for admin moderation', async () => {
   const draft = await request(
     'POST',

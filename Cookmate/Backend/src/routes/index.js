@@ -40,5 +40,7 @@ router.use('/vai-tro', vaiTroRoutes);
 router.use('/nhat-ky-he-thong', nhatKyHeThongRoutes);
 router.use('/goi-dich-vu', goiDichVuRoutes);
 router.use('/lich-an', require('./lichAnRoutes'));
+router.use('/thanh-toan', require('./thanhToanRoutes'));
+router.use('/tu-van-ai', require('./tuVanRoutes'));
 
 module.exports = router;

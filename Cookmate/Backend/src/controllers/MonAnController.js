@@ -221,7 +221,7 @@ const buildRecipePayload = (body, currentRecipe = null) => {
     payload.idDanhMuc = idDanhMuc;
   }
 
-  ['tenMonAn', 'moTa', 'gioiThieu', 'anhDaiDien', 'doKho'].forEach((field) => {
+  ['tenMonAn', 'moTa', 'gioiThieu', 'anhDaiDien', 'doKho', 'tenDauBep', 'videoHuongDan', 'capTruyCapToiThieu'].forEach((field) => {
     if (Object.prototype.hasOwnProperty.call(body, field)) {
       payload[field] = normalizeText(body[field]) || null;
     }

@@ -38,6 +38,9 @@ const recipe = z.object({
   thoiGianNau: z.number().int().min(0).max(10080).optional(),
   tongThoiGian: z.number().int().min(0).max(20160).optional(),
   trangThai: status.optional(),
+  tenDauBep: optionalText(150),
+  videoHuongDan: z.string().url().max(500).nullable().optional(),
+  capTruyCapToiThieu: z.enum(['FREE', 'BASIC', 'PRO', 'CHEF']).optional(),
   nguyenLieus: z
     .array(
       z.object({

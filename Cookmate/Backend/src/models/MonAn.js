@@ -23,6 +23,8 @@ const MonAn = sequelize.define(
     ngayGuiDuyet: { type: DataTypes.DATE, allowNull: true },
     ngayDuyet: { type: DataTypes.DATE, allowNull: true },
     capTruyCapToiThieu: { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'FREE' },
+    tenDauBep: { type: DataTypes.STRING(150), allowNull: true },
+    videoHuongDan: { type: DataTypes.STRING(500), allowNull: true },
 
     tenMonAn: {
       type: DataTypes.STRING(200),
