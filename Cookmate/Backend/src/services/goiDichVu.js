@@ -90,7 +90,10 @@ async function layGoiHienTai(idNguoiDung) {
       [Op.or]: [{ thoiGianKetThuc: null }, { thoiGianKetThuc: { [Op.gt]: now } }],
     },
     include: [{ model: db.GoiDichVu, as: 'goiDichVu', where: { trangThai: 1 } }],
-    order: [[db.GoiDichVu, 'capDo', 'DESC'], ['thoiGianBatDau', 'DESC']],
+    order: [
+      [{ model: db.GoiDichVu, as: 'goiDichVu' }, 'capDo', 'DESC'],
+      ['thoiGianBatDau', 'DESC'],
+    ],
   });
   return active?.goiDichVu || db.GoiDichVu.findOne({ where: { maGoi: 'FREE', trangThai: 1 } });
 }
