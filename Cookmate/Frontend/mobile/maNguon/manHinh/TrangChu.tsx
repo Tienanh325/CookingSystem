@@ -3,6 +3,7 @@ import { Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 're
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { useXacThuc } from '../nguCanh/NguCanhXacThuc'
 import useTaiNguyen from '../moc/useTaiNguyen'
+import useTimKiemGiongNoi from '../moc/useTimKiemGiongNoi'
 import { Nut, DauTrang, BieuTuong, TheMonAn, ManHinh, TieuDePhan, TrangThai } from '../thanhPhan/GiaoDien'
 import { mauSac, kieuDang as s, phongChuTieuDe } from '../ChuDe'
 export default function TrangChu({ navigation }) {
@@ -11,6 +12,10 @@ export default function TrangChu({ navigation }) {
     recipes = useTaiNguyen('/mon-an?limit=6&sort=popular'),
     categories = useTaiNguyen('/danh-muc?limit=12')
   const explore = () => navigation.navigate('KhamPha', { q: query, category: '' })
+  const voice = useTimKiemGiongNoi((text) => {
+    setQuery(text)
+    navigation.navigate('KhamPha', { q: text, category: '' })
+  })
   return (
     <ManHinh
       header={<DauTrang notifications />}
@@ -47,10 +52,28 @@ export default function TrangChu({ navigation }) {
           returnKeyType="search"
           onSubmitEditing={explore}
         />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={voice.dangNghe ? 'Dừng nghe' : 'Tìm kiếm bằng giọng nói'}
+          accessibilityState={{ selected: voice.dangNghe }}
+          onPress={voice.chuyenTrangThai}
+          hitSlop={8}
+        >
+          <BieuTuong
+            name={voice.dangNghe ? 'stop-circle' : 'mic-outline'}
+            color={voice.dangNghe ? mauSac.red : mauSac.accent}
+          />
+        </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Tìm kiếm" onPress={explore}>
           <BieuTuong name="arrow-forward" color={mauSac.accent} />
         </Pressable>
       </View>
+      {!!voice.loiGiongNoi && (
+        <Text style={[s.small, { color: mauSac.red, marginTop: 8 }]}>{voice.loiGiongNoi}</Text>
+      )}
+      {voice.dangNghe && (
+        <Text style={[s.small, { color: mauSac.accent, marginTop: 8 }]}>Đang nghe tên món…</Text>
+      )}
       <View
         style={{
           marginTop: 24,
