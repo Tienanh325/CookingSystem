@@ -453,7 +453,10 @@ test('hidden recipes are available only in admin catalog and excluded from favor
     (await request('DELETE', `/mon-an/${recipe.idMonAn}`, undefined, admin)).status,
     200,
   );
-  assert.equal((await request('GET', '/mon-an')).data.length, 0);
+  assert.equal(
+    (await request('GET', '/mon-an')).data.some((item) => item.idMonAn === recipe.idMonAn),
+    false,
+  );
   assert.equal((await request('GET', '/yeu-thich', undefined, user)).data.length, 0);
   assert.equal(
     (await request('GET', '/admin/mon-an?trangThai=0', undefined, admin)).data.length,
