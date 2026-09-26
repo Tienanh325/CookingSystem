@@ -69,6 +69,7 @@ export default function CaNhan({ navigation }) {
           <View style={[s.card, { padding: 0 }]}>
             {[
               ['person-outline', 'Thông tin cá nhân', 'SuaHoSo'],
+              ['create-outline', 'Công thức của tôi', 'BaiDangCuaToi'],
               ['lock-closed-outline', 'Đổi mật khẩu', 'DoiMatKhau'],
               ['notifications-outline', 'Thông báo', 'ThongBao'],
             ]
