@@ -309,6 +309,21 @@ test('admin creates catalog and publishable recipe; audits persist', async () =>
   assert.equal(recipe.tongThoiGian, 25);
   assert.ok((await db.NhatKyHeThong.count()) >= 3);
 });
+test('recipe nutrition is calculated from ingredient weight per serving', async () => {
+  const updatedIngredient = await request(
+    'PATCH',
+    `/nguyen-lieu/${ingredient.idNguyenLieu}`,
+    { nangLuongKcal: 130, proteinG: 2.7, carbG: 28, chatBeoG: 0.3, chatXoG: 0.4, natriMg: 1 },
+    admin,
+  );
+  assert.equal(updatedIngredient.status, 200, JSON.stringify(updatedIngredient));
+  const detail = await request('GET', `/mon-an/${recipe.idMonAn}`);
+  assert.equal(detail.status, 200, JSON.stringify(detail));
+  assert.equal(detail.data.dinhDuong.dayDuDuLieu, true);
+  assert.equal(detail.data.dinhDuong.tongMon.nangLuongKcal, 260);
+  assert.equal(detail.data.dinhDuong.moiKhauPhan.nangLuongKcal, 130);
+  assert.equal(detail.data.dinhDuong.moiKhauPhan.proteinG, 2.7);
+});
 test('users submit owned recipe drafts for admin moderation', async () => {
   const draft = await request(
     'POST',

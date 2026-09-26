@@ -31,6 +31,11 @@ const MonAnNguyenLieu = sequelize.define(
       type: DataTypes.STRING(255),
       allowNull: true,
     },
+
+    khoiLuongGram: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
   },
   {
     tableName: 'MonAnNguyenLieu',

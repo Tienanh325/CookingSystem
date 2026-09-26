@@ -5,6 +5,7 @@ const db = require('../models');
 const audit = require('../utils/audit');
 const asyncHandler = require('../utils/asyncHandler');
 const { sendError, sendSuccess } = require('../utils/apiResponse');
+const { tinhDinhDuong } = require('../services/dinhDuong');
 const {
   getPagination,
   getPagingMeta,
@@ -37,9 +38,12 @@ const recipeDetailIncludes = (phienBan) => [
   {
     model: db.NguyenLieu,
     as: 'nguyenLieus',
-    attributes: ['idNguyenLieu', 'tenNguyenLieu', 'donViMacDinh'],
+    attributes: [
+      'idNguyenLieu', 'tenNguyenLieu', 'donViMacDinh', 'nangLuongKcal',
+      'proteinG', 'carbG', 'chatBeoG', 'chatXoG', 'natriMg',
+    ],
     through: {
-      attributes: ['soLuong', 'donVi', 'ghiChu'],
+      attributes: ['soLuong', 'donVi', 'ghiChu', 'khoiLuongGram'],
     },
   },
   {
@@ -94,10 +98,12 @@ const fetchRecipeById = async (idMonAn, activeOnly = true) => {
 
   const recipe = await db.MonAn.findOne({ where });
   if (!recipe) return null;
-  return db.MonAn.findOne({
+  const detail = await db.MonAn.findOne({
     where,
     include: recipeDetailIncludes(recipe.phienBan),
   });
+  if (detail) detail.setDataValue('dinhDuong', tinhDinhDuong(detail));
+  return detail;
 };
 
 const findRecipeIdsMatchingIngredients = async (ingredientIds) => {
@@ -280,11 +286,23 @@ const normalizeIngredients = (items) => {
       throw createHttpError(400, 'Each ingredient needs idNguyenLieu and donVi');
     }
 
+    let khoiLuongGram = item.khoiLuongGram === null ? null : Number(item.khoiLuongGram);
+    if (!Number.isFinite(khoiLuongGram) || khoiLuongGram <= 0) {
+      const unit = donVi.toLowerCase();
+      const soLuong = toNonNegativeNumber(item.soLuong, 0);
+      khoiLuongGram = ['g', 'gram'].includes(unit)
+        ? soLuong
+        : ['kg', 'kilogram'].includes(unit)
+          ? soLuong * 1000
+          : null;
+    }
+
     return {
       idNguyenLieu,
       soLuong: toNonNegativeNumber(item.soLuong, 0),
       donVi,
       ghiChu: normalizeText(item.ghiChu) || null,
+      khoiLuongGram,
     };
   });
 };

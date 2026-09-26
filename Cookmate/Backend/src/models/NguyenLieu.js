@@ -26,6 +26,13 @@ const NguyenLieu = sequelize.define(
       allowNull: true,
     },
 
+    nangLuongKcal: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
+    proteinG: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
+    carbG: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
+    chatBeoG: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
+    chatXoG: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
+    natriMg: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
+
     trangThai: {
       type: DataTypes.TINYINT,
       allowNull: false,

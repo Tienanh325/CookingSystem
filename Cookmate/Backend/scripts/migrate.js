@@ -33,6 +33,13 @@ async function migrate() {
       'capTruyCapToiThieu',
       { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'FREE' },
     ],
+    ['MonAnNguyenLieu', 'khoiLuongGram', { type: DataTypes.DECIMAL(10, 2), allowNull: true }],
+    ['NguyenLieu', 'nangLuongKcal', { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 }],
+    ['NguyenLieu', 'proteinG', { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 }],
+    ['NguyenLieu', 'carbG', { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 }],
+    ['NguyenLieu', 'chatBeoG', { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 }],
+    ['NguyenLieu', 'chatXoG', { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 }],
+    ['NguyenLieu', 'natriMg', { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 }],
   ];
   for (const [table, column, definition] of changes) {
     if (tables.includes(table.toLowerCase()) && !(await qi.describeTable(table))[column])

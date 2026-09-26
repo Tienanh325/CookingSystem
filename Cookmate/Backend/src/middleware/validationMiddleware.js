@@ -43,6 +43,7 @@ const recipe = z.object({
       z.object({
         idNguyenLieu: id,
         soLuong: z.number().positive().max(1000000),
+        khoiLuongGram: z.number().positive().max(1000000).nullable().optional(),
         donVi: text(50),
         ghiChu: optionalText(255),
       }),
@@ -85,6 +86,12 @@ const ingredient = z.object({
   donViMacDinh: optionalText(50),
   moTa: optionalText(),
   trangThai: status.optional(),
+  nangLuongKcal: z.number().min(0).max(10000).optional(),
+  proteinG: z.number().min(0).max(1000).optional(),
+  carbG: z.number().min(0).max(1000).optional(),
+  chatBeoG: z.number().min(0).max(1000).optional(),
+  chatXoG: z.number().min(0).max(1000).optional(),
+  natriMg: z.number().min(0).max(100000).optional(),
 });
 const role = z.object({
   tenVaiTro: text(50).regex(/^[A-Z][A-Z0-9_]*$/),
