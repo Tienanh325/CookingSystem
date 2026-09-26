@@ -17,6 +17,7 @@ import {
   Menu,
   Search,
   X,
+  ListChecks,
 } from 'lucide-react'
 import { useAuth } from '../context/auth'
 const groups = [
@@ -25,6 +26,7 @@ const groups = [
     'QUẢN LÝ NỘI DUNG',
     [
       ['/recipes', 'Công thức món ăn', UtensilsCrossed],
+      ['/submissions', 'Kiểm duyệt bài đăng', ListChecks],
       ['/categories', 'Danh mục', Layers3],
       ['/ingredients', 'Nguyên liệu', Carrot],
     ],
