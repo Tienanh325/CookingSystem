@@ -22,6 +22,12 @@ const ThongBaoNguoiDung = require('./ThongBaoNguoiDung');
 const ThietBiThongBao = require('./ThietBiThongBao');
 
 const NhatKyHeThong = require('./NhatKyHeThong');
+const GoiDichVu = require('./GoiDichVu');
+const MucTieuAnUong = require('./MucTieuAnUong');
+const GoiMucTieuAnUong = require('./GoiMucTieuAnUong');
+const DangKyDichVu = require('./DangKyDichVu');
+const NguoiDungMucTieu = require('./NguoiDungMucTieu');
+const CongThucDaMo = require('./CongThucDaMo');
 
 // ======================================================
 // 1. VaiTro - NguoiDung
@@ -354,6 +360,44 @@ NhatKyHeThong.belongsTo(NguoiDung, {
 });
 
 // ======================================================
+// 19. Thuê bao, mục tiêu ăn uống và hạn mức công thức
+// ======================================================
+
+NguoiDung.hasMany(DangKyDichVu, { foreignKey: 'idNguoiDung', as: 'dangKyDichVus' });
+DangKyDichVu.belongsTo(NguoiDung, { foreignKey: 'idNguoiDung', as: 'nguoiDung' });
+GoiDichVu.hasMany(DangKyDichVu, { foreignKey: 'idGoiDichVu', as: 'dangKyDichVus' });
+DangKyDichVu.belongsTo(GoiDichVu, { foreignKey: 'idGoiDichVu', as: 'goiDichVu' });
+
+GoiDichVu.belongsToMany(MucTieuAnUong, {
+  through: GoiMucTieuAnUong,
+  foreignKey: 'idGoiDichVu',
+  otherKey: 'idMucTieuAnUong',
+  as: 'mucTieuAnUongs',
+});
+MucTieuAnUong.belongsToMany(GoiDichVu, {
+  through: GoiMucTieuAnUong,
+  foreignKey: 'idMucTieuAnUong',
+  otherKey: 'idGoiDichVu',
+  as: 'goiDichVus',
+});
+
+NguoiDung.hasMany(NguoiDungMucTieu, { foreignKey: 'idNguoiDung', as: 'quyenMucTieuAnUongs' });
+NguoiDungMucTieu.belongsTo(NguoiDung, { foreignKey: 'idNguoiDung', as: 'nguoiDung' });
+MucTieuAnUong.hasMany(NguoiDungMucTieu, {
+  foreignKey: 'idMucTieuAnUong',
+  as: 'quyenNguoiDungs',
+});
+NguoiDungMucTieu.belongsTo(MucTieuAnUong, {
+  foreignKey: 'idMucTieuAnUong',
+  as: 'mucTieuAnUong',
+});
+
+NguoiDung.hasMany(CongThucDaMo, { foreignKey: 'idNguoiDung', as: 'congThucDaMos' });
+CongThucDaMo.belongsTo(NguoiDung, { foreignKey: 'idNguoiDung', as: 'nguoiDung' });
+MonAn.hasMany(CongThucDaMo, { foreignKey: 'idMonAn', as: 'luotMoDauTiens' });
+CongThucDaMo.belongsTo(MonAn, { foreignKey: 'idMonAn', as: 'monAn' });
+
+// ======================================================
 // Export tất cả Model
 // ======================================================
 
@@ -377,4 +421,10 @@ module.exports = {
   ThongBaoNguoiDung,
   ThietBiThongBao,
   NhatKyHeThong,
+  GoiDichVu,
+  MucTieuAnUong,
+  GoiMucTieuAnUong,
+  DangKyDichVu,
+  NguoiDungMucTieu,
+  CongThucDaMo,
 };
