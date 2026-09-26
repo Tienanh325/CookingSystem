@@ -57,6 +57,11 @@ MonAn.belongsTo(DanhMuc, {
   as: 'danhMuc',
 });
 
+NguoiDung.hasMany(MonAn, { foreignKey: 'idTacGia', as: 'monAnDaDang' });
+MonAn.belongsTo(NguoiDung, { foreignKey: 'idTacGia', as: 'tacGia' });
+NguoiDung.hasMany(MonAn, { foreignKey: 'idNguoiDuyet', as: 'monAnDaDuyet' });
+MonAn.belongsTo(NguoiDung, { foreignKey: 'idNguoiDuyet', as: 'nguoiDuyet' });
+
 // ======================================================
 // 3. MonAn - NguyenLieu
 // Quan hệ N-N thông qua MonAnNguyenLieu
