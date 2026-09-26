@@ -13,6 +13,26 @@ async function migrate() {
     ['MonAn', 'phienBan', { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 }],
     ['BuocNau', 'phienBan', { type: DataTypes.INTEGER, allowNull: false, defaultValue: 1 }],
     ['LichSuNau', 'congThucSnapshot', { type: DataTypes.JSON, allowNull: true }],
+    ['MonAn', 'idTacGia', { type: DataTypes.INTEGER, allowNull: true }],
+    ['MonAn', 'idNguoiDuyet', { type: DataTypes.INTEGER, allowNull: true }],
+    [
+      'MonAn',
+      'nguonNoiDung',
+      { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'BIEN_TAP' },
+    ],
+    [
+      'MonAn',
+      'trangThaiDuyet',
+      { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'DA_DUYET' },
+    ],
+    ['MonAn', 'lyDoTuChoi', { type: DataTypes.STRING(1000), allowNull: true }],
+    ['MonAn', 'ngayGuiDuyet', { type: DataTypes.DATE, allowNull: true }],
+    ['MonAn', 'ngayDuyet', { type: DataTypes.DATE, allowNull: true }],
+    [
+      'MonAn',
+      'capTruyCapToiThieu',
+      { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'FREE' },
+    ],
   ];
   for (const [table, column, definition] of changes) {
     if (tables.includes(table.toLowerCase()) && !(await qi.describeTable(table))[column])
