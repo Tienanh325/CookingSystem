@@ -13,6 +13,7 @@ const thongBaoRoutes = require('./thongBaoRoutes');
 const uploadRoutes = require('./uploadRoutes');
 const vaiTroRoutes = require('./vaiTroRoutes');
 const yeuThichRoutes = require('./yeuThichRoutes');
+const goiDichVuRoutes = require('./goiDichVuRoutes');
 
 const router = express.Router();
 router.use('/admin', require('./adminRoutes'));
@@ -37,5 +38,6 @@ router.use('/uploads', uploadRoutes);
 router.use('/nguoi-dung', nguoiDungRoutes);
 router.use('/vai-tro', vaiTroRoutes);
 router.use('/nhat-ky-he-thong', nhatKyHeThongRoutes);
+router.use('/goi-dich-vu', goiDichVuRoutes);
 
 module.exports = router;
