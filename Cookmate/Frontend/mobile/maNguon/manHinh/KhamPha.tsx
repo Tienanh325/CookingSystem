@@ -16,6 +16,7 @@ import {
   TrangThai,
 } from '../thanhPhan/GiaoDien'
 import useTaiNguyen from '../moc/useTaiNguyen'
+import useTimKiemGiongNoi from '../moc/useTimKiemGiongNoi'
 import { mauSac, kieuDang as s } from '../ChuDe'
 export default function KhamPha({ route }) {
   const [query, setQuery] = useState(route.params?.q || ''),
@@ -57,6 +58,11 @@ export default function KhamPha({ route }) {
       Number(Boolean(maxTime)) +
       ingredientIds.length +
       Number(sort !== 'newest')
+  const voice = useTimKiemGiongNoi((text) => {
+    setQuery(text)
+    setSearch(text)
+    setPage(1)
+  })
 
   const submitSearch = () => {
     setSearch(query.trim())
@@ -114,6 +120,18 @@ export default function KhamPha({ route }) {
             color: mauSac.ink,
           }}
         />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={voice.dangNghe ? 'Dừng nghe' : 'Tìm kiếm bằng giọng nói'}
+          accessibilityState={{ selected: voice.dangNghe }}
+          onPress={voice.chuyenTrangThai}
+          hitSlop={8}
+        >
+          <BieuTuong
+            name={voice.dangNghe ? 'stop-circle' : 'mic-outline'}
+            color={voice.dangNghe ? mauSac.red : mauSac.accent}
+          />
+        </Pressable>
         {!!query && (
           <Pressable
             accessibilityRole="button"
@@ -136,6 +154,12 @@ export default function KhamPha({ route }) {
           <BieuTuong name="arrow-forward" color={mauSac.accent} />
         </Pressable>
       </View>
+      {!!voice.loiGiongNoi && (
+        <Text style={[s.small, { color: mauSac.red, marginTop: 8 }]}>{voice.loiGiongNoi}</Text>
+      )}
+      {voice.dangNghe && (
+        <Text style={[s.small, { color: mauSac.accent, marginTop: 8 }]}>Đang nghe tên món…</Text>
+      )}
       <View style={[s.between, { marginTop: 14 }]}>
         <Pressable
           accessibilityRole="button"
