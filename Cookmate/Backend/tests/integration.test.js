@@ -309,6 +309,40 @@ test('admin creates catalog and publishable recipe; audits persist', async () =>
   assert.equal(recipe.tongThoiGian, 25);
   assert.ok((await db.NhatKyHeThong.count()) >= 3);
 });
+test('users submit owned recipe drafts for admin moderation', async () => {
+  const draft = await request(
+    'POST',
+    '/mon-an/cua-toi',
+    {
+      tenMonAn: 'Bún người dùng',
+      idDanhMuc: category.idDanhMuc,
+      khauPhan: 2,
+      nguyenLieus: [{ idNguyenLieu: ingredient.idNguyenLieu, soLuong: 100, donVi: 'g' }],
+      buocNaus: [{ huongDan: 'Nấu chín và trình bày' }],
+    },
+    user,
+  );
+  assert.equal(draft.status, 201, JSON.stringify(draft));
+  assert.equal(draft.data.trangThaiDuyet, 'NHAP');
+  assert.equal(
+    (await request('PATCH', `/mon-an/cua-toi/${draft.data.idMonAn}`, { moTa: 'x' }, other)).status,
+    404,
+  );
+  assert.equal(
+    (await request('POST', `/mon-an/cua-toi/${draft.data.idMonAn}/gui-duyet`, {}, user)).status,
+    200,
+  );
+  assert.equal((await request('GET', `/mon-an/${draft.data.idMonAn}`)).status, 404);
+  const approved = await request(
+    'PATCH',
+    `/admin/bai-dang/${draft.data.idMonAn}/kiem-duyet`,
+    { quyetDinh: 'DUYET' },
+    admin,
+  );
+  assert.equal(approved.status, 200, JSON.stringify(approved));
+  assert.equal(approved.data.trangThaiDuyet, 'DA_DUYET');
+  assert.equal((await request('GET', `/mon-an/${draft.data.idMonAn}`)).status, 200);
+});
 test('editing recipe keeps old history steps and snapshots', async () => {
   const history = (await request('POST', `/mon-an/${recipe.idMonAn}/lich-su-nau`, {}, user)).data;
   const oldStep = history.chiTietLichSuNaus[0].idBuocNau;
