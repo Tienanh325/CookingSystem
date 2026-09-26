@@ -43,10 +43,17 @@ const configs = {
       ['tenNguyenLieu', 'Tên nguyên liệu'],
       ['donViMacDinh', 'Đơn vị mặc định'],
       ['moTa', 'Mô tả'],
+      ['nangLuongKcal', 'Năng lượng (kcal/100 g)'],
+      ['proteinG', 'Protein (g/100 g)'],
+      ['carbG', 'Carb (g/100 g)'],
+      ['chatBeoG', 'Chất béo (g/100 g)'],
+      ['chatXoG', 'Chất xơ (g/100 g)'],
+      ['natriMg', 'Natri (mg/100 g)'],
     ],
     columns: [
       ['tenNguyenLieu', 'Tên nguyên liệu'],
       ['donViMacDinh', 'Đơn vị'],
+      ['nangLuongKcal', 'kcal/100 g'],
       ['trangThai', 'Trạng thái'],
     ],
     create: true,
@@ -160,6 +167,8 @@ export default function Records({ kind }) {
       const body = Object.fromEntries(new FormData(e.currentTarget))
       body.trangThai = Number(body.trangThai)
       if (body.idVaiTro) body.idVaiTro = Number(body.idVaiTro)
+      for (const key of ['nangLuongKcal', 'proteinG', 'carbG', 'chatBeoG', 'chatXoG', 'natriMg'])
+        if (body[key] !== undefined) body[key] = Number(body[key] || 0)
       await api(`${c.path}${edit[c.id] ? `/${edit[c.id]}` : ''}`, {
         method: edit[c.id] ? 'PATCH' : 'POST',
         body,
@@ -314,6 +323,9 @@ export default function Records({ kind }) {
                 defaultValue={edit[name] || ''}
                 required={i === 0}
                 maxLength={name === 'moTa' ? 5000 : 100}
+                type={['nangLuongKcal', 'proteinG', 'carbG', 'chatBeoG', 'chatXoG', 'natriMg'].includes(name) ? 'number' : 'text'}
+                min={name === 'moTa' ? undefined : 0}
+                step="0.01"
               />
             ))}
             {kind === 'users' && (

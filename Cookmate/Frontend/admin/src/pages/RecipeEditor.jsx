@@ -46,6 +46,7 @@ export default function RecipeEditor() {
             nguyenLieus: v.nguyenLieus.map((x) => ({
               idNguyenLieu: x.idNguyenLieu,
               soLuong: Number(x.MonAnNguyenLieu.soLuong),
+              khoiLuongGram: Number(x.MonAnNguyenLieu.khoiLuongGram || 0),
               donVi: x.MonAnNguyenLieu.donVi,
               ghiChu: x.MonAnNguyenLieu.ghiChu || '',
             })),
@@ -105,6 +106,7 @@ export default function RecipeEditor() {
         ...x,
         idNguyenLieu: Number(x.idNguyenLieu),
         soLuong: Number(x.soLuong),
+        khoiLuongGram: Number(x.khoiLuongGram) || null,
       }))
       await api(id ? `/mon-an/${id}` : '/mon-an', { method: id ? 'PATCH' : 'POST', body: payload })
       navigate('/recipes')
@@ -206,7 +208,7 @@ export default function RecipeEditor() {
                   onClick={() =>
                     update('nguyenLieus', [
                       ...form.nguyenLieus,
-                      { idNguyenLieu: '', soLuong: 1, donVi: 'g' },
+                      { idNguyenLieu: '', soLuong: 1, donVi: 'g', khoiLuongGram: 1 },
                     ])
                   }
                 >
@@ -252,6 +254,16 @@ export default function RecipeEditor() {
                     maxLength={50}
                     value={row.donVi}
                     onChange={(e) => updateRow('nguyenLieus', i, 'donVi', e.target.value)}
+                  />
+                  <input
+                    aria-label={`Khối lượng quy đổi gram ${i + 1}`}
+                    title="Khối lượng quy đổi sang gram để tính dinh dưỡng"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Gram quy đổi"
+                    value={row.khoiLuongGram || ''}
+                    onChange={(e) => updateRow('nguyenLieus', i, 'khoiLuongGram', Number(e.target.value))}
                   />
                   <button
                     type="button"
