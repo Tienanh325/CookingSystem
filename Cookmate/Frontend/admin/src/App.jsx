@@ -10,6 +10,7 @@ import RecipeEditor from './pages/RecipeEditor'
 import Records from './pages/Records'
 import Notifications from './pages/Notifications'
 import Settings from './pages/Settings'
+import Submissions from './pages/Submissions'
 import './App.css'
 function Guard() {
   const { loading, user } = useAuth()
@@ -29,6 +30,7 @@ export default function App() {
               <Route path="recipes" element={<Recipes />} />
               <Route path="recipes/new" element={<RecipeEditor key="new" />} />
               <Route path="recipes/:id/edit" element={<RecipeEditor />} />
+              <Route path="submissions" element={<Submissions />} />
               {['categories', 'ingredients', 'users', 'roles', 'comments', 'reviews', 'logs'].map(
                 (kind) => (
                   <Route key={kind} path={kind} element={<Records key={kind} kind={kind} />} />
