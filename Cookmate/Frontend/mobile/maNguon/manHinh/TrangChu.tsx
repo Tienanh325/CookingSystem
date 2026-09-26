@@ -6,6 +6,7 @@ import useTaiNguyen from '../moc/useTaiNguyen'
 import useTimKiemGiongNoi from '../moc/useTimKiemGiongNoi'
 import { Nut, DauTrang, BieuTuong, TheMonAn, ManHinh, TieuDePhan, TrangThai } from '../thanhPhan/GiaoDien'
 import { mauSac, kieuDang as s, phongChuTieuDe } from '../ChuDe'
+import QuangCaoGoi from '../thanhPhan/QuangCaoGoi'
 export default function TrangChu({ navigation }) {
   const { nguoiDung } = useXacThuc(),
     [query, setQuery] = useState(''),
@@ -74,6 +75,7 @@ export default function TrangChu({ navigation }) {
       {voice.dangNghe && (
         <Text style={[s.small, { color: mauSac.accent, marginTop: 8 }]}>Đang nghe tên món…</Text>
       )}
+      <QuangCaoGoi />
       <View
         style={{
           marginTop: 24,
