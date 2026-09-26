@@ -6,6 +6,7 @@ const audit = require('../utils/audit');
 const asyncHandler = require('../utils/asyncHandler');
 const { sendError, sendSuccess } = require('../utils/apiResponse');
 const { tinhDinhDuong } = require('../services/dinhDuong');
+const { kiemTraMoCongThuc } = require('../services/truyCapCongThuc');
 const {
   getPagination,
   getPagingMeta,
@@ -606,6 +607,15 @@ const MonAnController = {
 
     if (!monAn) {
       return sendError(res, 404, 'Recipe not found');
+    }
+
+    if (!req.isAdminView) {
+      const quyenTruyCap = await kiemTraMoCongThuc(req.auth?.idNguoiDung, monAn);
+      monAn.setDataValue('quyenTruyCap', {
+        goiHienTai: quyenTruyCap.goi?.maGoi || 'FREE',
+        laCongThucMoi: quyenTruyCap.laCongThucMoi,
+        conLaiHomNay: quyenTruyCap.conLai ?? null,
+      });
     }
 
     if (!req.isAdminView) {

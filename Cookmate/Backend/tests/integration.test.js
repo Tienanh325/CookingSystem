@@ -621,6 +621,21 @@ test('upload rejects forged MIME and reencodes valid image with safe extension',
   assert.match(imageResponse.headers.get('content-type'), /image\/webp/);
   await require('fs/promises').unlink(path.join(__dirname, '../uploads', r.data.filename));
 });
+test('free accounts can open at most ten previously unseen recipes each day', async () => {
+  const recipes = await db.MonAn.bulkCreate(Array.from({ length: 11 }, (_, index) => ({
+    idDanhMuc: category.idDanhMuc,
+    tenMonAn: `Món giới hạn ${index + 1}`,
+    khauPhan: 1,
+    trangThai: 1,
+    trangThaiDuyet: 'DA_DUYET',
+  })));
+  for (const item of recipes.slice(0, 10))
+    assert.equal((await request('GET', `/mon-an/${item.idMonAn}`, undefined, other)).status, 200);
+  assert.equal((await request('GET', `/mon-an/${recipes[10].idMonAn}`, undefined, other)).status, 429);
+  assert.equal((await request('GET', `/mon-an/${recipes[0].idMonAn}`, undefined, other)).status, 200);
+  await recipes[0].update({ capTruyCapToiThieu: 'CHEF' });
+  assert.equal((await request('GET', `/mon-an/${recipes[0].idMonAn}`, undefined, other)).status, 403);
+});
 test('password change and logout revoke existing tokens', async () => {
   assert.equal(
     (

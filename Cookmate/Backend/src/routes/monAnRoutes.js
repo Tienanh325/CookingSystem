@@ -5,7 +5,7 @@ const YeuThichController = require('../controllers/YeuThichController');
 const DanhGiaController = require('../controllers/DanhGiaController');
 const BinhLuanController = require('../controllers/BinhLuanController');
 const LichSuNauController = require('../controllers/LichSuNauController');
-const { authenticate, authorizeAdmin } = require('../middleware/authMiddleware');
+const { authenticate, authorizeAdmin, optionalAuthenticate } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -16,7 +16,7 @@ router.patch('/cua-toi/:id', authenticate, MonAnController.updateMine);
 router.post('/cua-toi/:id/gui-duyet', authenticate, MonAnController.submitMine);
 
 router.get('/', MonAnController.list);
-router.get('/:id', MonAnController.detail);
+router.get('/:id', optionalAuthenticate, MonAnController.detail);
 router.get('/:id/stats', MonAnController.stats);
 
 router.get('/:id/yeu-thich', authenticate, YeuThichController.status);
