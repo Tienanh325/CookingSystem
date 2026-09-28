@@ -299,6 +299,7 @@ test('admin creates catalog and publishable recipe; audits persist', async () =>
     {
       tenMonAn: 'Cơm nhà',
       idDanhMuc: category.idDanhMuc,
+      anhDaiDien: '/uploads/mon-an/recipe-001.webp',
       khauPhan: 2,
       thoiGianChuanBi: 5,
       thoiGianNau: 20,
@@ -310,6 +311,7 @@ test('admin creates catalog and publishable recipe; audits persist', async () =>
   assert.equal(r.status, 201, JSON.stringify(r));
   recipe = r.data;
   assert.equal(recipe.buocNaus.length, 1);
+  assert.equal(recipe.anhDaiDien, '/uploads/mon-an/recipe-001.webp');
   assert.equal(recipe.tongThoiGian, 25);
   assert.ok((await db.NhatKyHeThong.count()) >= 3);
 });
