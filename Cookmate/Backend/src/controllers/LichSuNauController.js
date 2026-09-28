@@ -4,6 +4,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { sendSuccess } = require('../utils/apiResponse');
 const error = require('../utils/httpError');
 const { getPagination, getPagingMeta } = require('../utils/query');
+const { layGoiHienTai } = require('../services/goiDichVu');
 const includes = [
   {
     model: db.MonAn,
@@ -16,7 +17,27 @@ const includes = [
     include: [{ model: db.BuocNau, as: 'buocNau' }],
   },
 ];
-const fetchHistory = (id) => db.LichSuNau.findByPk(id, { include: includes });
+async function fetchHistory(id, auth) {
+  const history = await db.LichSuNau.findByPk(id, {
+    include: [
+      { ...includes[0], attributes: [...includes[0].attributes, 'videoHuongDan'] },
+      includes[1],
+    ],
+  });
+  if (!history?.monAn) return history;
+  const coVideoHuongDan = Boolean(history.monAn.videoHuongDan || history.congThucSnapshot?.videoHuongDan);
+  const plan = auth?.isAdmin ? null : await layGoiHienTai(auth?.idNguoiDung);
+  const duocXemVideo = Boolean(auth?.isAdmin || Number(plan?.videoChiTiet));
+  history.monAn.setDataValue('coVideoHuongDan', coVideoHuongDan);
+  history.monAn.setDataValue('duocXemVideo', duocXemVideo);
+  if (!duocXemVideo) {
+    history.monAn.setDataValue('videoHuongDan', null);
+    if (history.congThucSnapshot?.videoHuongDan) {
+      history.setDataValue('congThucSnapshot', { ...history.congThucSnapshot, videoHuongDan: null });
+    }
+  }
+  return history;
+}
 function access(req, history) {
   if (!history) throw error(404, 'Không tìm thấy lịch sử nấu.');
   if (!req.auth.isAdmin && Number(history.idNguoiDung) !== req.auth.idNguoiDung)
@@ -65,7 +86,7 @@ async function mutate(req, action) {
       { transaction },
     );
   });
-  return fetchHistory(req.params.id);
+  return fetchHistory(req.params.id, req.auth);
 }
 module.exports = {
   listMine: asyncHandler(async (req, res) => {
@@ -74,6 +95,7 @@ module.exports = {
     if (req.query.trangThai) where.trangThai = req.query.trangThai;
     const result = await db.LichSuNau.findAndCountAll({
       where,
+      attributes: { exclude: ['congThucSnapshot'] },
       include: [includes[0]],
       order: [
         ['thoiGianBatDau', 'DESC'],
@@ -91,7 +113,7 @@ module.exports = {
     );
   }),
   detail: asyncHandler(async (req, res) => {
-    const history = await fetchHistory(req.params.id);
+    const history = await fetchHistory(req.params.id, req.auth);
     access(req, history);
     return sendSuccess(res, 200, 'Chi tiết phiên nấu', history);
   }),
@@ -136,7 +158,7 @@ module.exports = {
       );
       return history.idLichSu;
     });
-    return sendSuccess(res, 201, 'Đã bắt đầu nấu', await fetchHistory(id));
+    return sendSuccess(res, 201, 'Đã bắt đầu nấu', await fetchHistory(id, req.auth));
   }),
   updateStep: asyncHandler(async (req, res) =>
     sendSuccess(res, 200, 'Đã cập nhật bước nấu', await mutate(req, 'step')),

@@ -586,6 +586,7 @@ const MonAnController = {
 
     const result = await db.MonAn.findAndCountAll({
       where,
+      attributes: req.isAdminView ? undefined : { exclude: ['videoHuongDan'] },
       include: recipeListIncludes(),
       order: [...getOrder(req.query.sort), ['idMonAn', 'DESC']],
       distinct: true,
@@ -611,11 +612,16 @@ const MonAnController = {
 
     if (!req.isAdminView) {
       const quyenTruyCap = await kiemTraMoCongThuc(req.auth?.idNguoiDung, monAn);
+      const coVideoHuongDan = Boolean(monAn.videoHuongDan);
+      const duocXemVideo = Boolean(Number(quyenTruyCap.goi?.videoChiTiet));
       monAn.setDataValue('quyenTruyCap', {
         goiHienTai: quyenTruyCap.goi?.maGoi || 'FREE',
         laCongThucMoi: quyenTruyCap.laCongThucMoi,
         conLaiHomNay: quyenTruyCap.conLai ?? null,
+        coVideoHuongDan,
+        duocXemVideo,
       });
+      if (!duocXemVideo) monAn.setDataValue('videoHuongDan', null);
     }
 
     if (!req.isAdminView) {
