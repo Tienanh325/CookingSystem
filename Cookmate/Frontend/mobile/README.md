@@ -29,6 +29,8 @@ Có thể dùng Expo Go để xem các chức năng không phụ thuộc remote 
 
 ## Chức năng
 
+Video hướng dẫn chi tiết dành cho thành viên Chef được nhúng và phát trực tiếp trong màn hình chi tiết món ăn hoặc luồng nấu từng bước. Ứng dụng dùng trình phát YouTube riêng tư (`youtube-nocookie.com`) trên web và WebView trên Android/iOS, không chuyển người dùng ra trình duyệt ngoài.
+
 Đăng nhập bằng email/mật khẩu; Google/Apple bật theo cấu hình backend. Xem [hướng dẫn xác thực](../../Backend/CUSTOMER-AUTH.md); Zalo hiện chưa khả dụng. Đã bỏ đăng nhập điện thoại/OTP và Face ID/vân tay.
 
 Khám phá, yêu thích, lịch sử và thông báo có phân trang trước/sau, tổng kết quả và chọn 5/10/20 mục (mặc định 5). Đổi trang cuộn lên đầu danh sách; đổi số mục quay về trang 1. Bình luận và đánh giá phân trang riêng, 5 mục/trang. Sau xóa, trang vượt quá tổng số trang tự điều chỉnh về trang hợp lệ.
