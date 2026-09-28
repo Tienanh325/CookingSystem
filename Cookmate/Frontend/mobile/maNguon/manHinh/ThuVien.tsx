@@ -24,7 +24,7 @@ export default function ThuVien({ route, navigation }) {
     )
   return (
     <ManHinh resetKey={`${page}:${limit}`}
-      header={<DauTrang notifications />}
+      header={<DauTrang back={!favorites} notifications />}
       refreshControl={
         nguoiDung ? (
           <RefreshControl

@@ -279,7 +279,8 @@ async function main() {
   await expect(
     mobile.getByRole('button', { name: 'Xem món Cơm gà gừng ấm áp', exact: true }),
   ).toBeVisible();
-  await mobile.getByRole('tab', { name: /Lịch sử/ }).click();
+  await mobile.getByRole('tab', { name: /Cá nhân/ }).click();
+  await mobile.getByRole('button', { name: 'Nhật ký vào bếp', exact: true }).click();
   await expect(mobile.getByText('Đã hoàn thành', { exact: true })).toBeVisible();
   await call(
     'POST',
@@ -292,7 +293,7 @@ async function main() {
   await mobile.getByRole('button', { name: 'Đánh dấu tất cả đã đọc', exact: true }).click();
   await expect(mobile.getByText(/· Đã đọc/)).toBeVisible();
   await mobile.getByRole('button', { name: 'Quay lại', exact: true }).click();
-  await mobile.getByRole('tab', { name: /Cá nhân/ }).click();
+  await mobile.getByRole('button', { name: 'Quay lại', exact: true }).click();
   await expect(mobile.getByText('Bạn yêu bếp', { exact: true })).toBeVisible();
   await mobile.getByRole('button', { name: 'Thông tin cá nhân', exact: true }).click();
   await mobile.getByLabel('Họ và tên', { exact: true }).fill('Người yêu bếp');
