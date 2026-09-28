@@ -42,6 +42,10 @@ async function migrate() {
     ['NguyenLieu', 'natriMg', { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 }],
     ['MonAn', 'tenDauBep', { type: DataTypes.STRING(150), allowNull: true }],
     ['MonAn', 'videoHuongDan', { type: DataTypes.STRING(500), allowNull: true }],
+    ['YeuCauThanhToan', 'ngayHetHanThanhToan', { type: DataTypes.DATE, allowNull: true }],
+    ['YeuCauThanhToan', 'maGiaoDichNhaCungCap', { type: DataTypes.STRING(100), allowNull: true }],
+    ['YeuCauThanhToan', 'maPhanHoi', { type: DataTypes.STRING(20), allowNull: true }],
+    ['YeuCauThanhToan', 'duLieuPhanHoi', { type: DataTypes.JSON, allowNull: true }],
   ];
   for (const [table, column, definition] of changes) {
     if (tables.includes(table.toLowerCase()) && !(await qi.describeTable(table))[column])
