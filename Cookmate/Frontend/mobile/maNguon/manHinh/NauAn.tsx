@@ -5,6 +5,7 @@ import { goiApi } from '../dichVu/KetNoiApi'
 import { useXacThuc } from '../nguCanh/NguCanhXacThuc'
 import { Nut, DauTrang, BieuTuong, LoiMoiDangNhap, ThongDiep, ManHinh, TrangThai } from '../thanhPhan/GiaoDien'
 import { mauSac, kieuDang as s } from '../ChuDe'
+import TrinhPhatVideo from '../thanhPhan/TrinhPhatVideo'
 export default function NauAn({ route, navigation }) {
   const { nguoiDung } = useXacThuc(),
     r = useTaiNguyen(`/lich-su-nau/${route.params.id}`, !!nguoiDung),
@@ -108,6 +109,17 @@ export default function NauAn({ route, navigation }) {
                   }}
                 />
               </View>
+              {history.monAn?.coVideoHuongDan && (
+                <View style={{ marginBottom: 24, gap: 10 }}>
+                  <Text style={[s.heading, { fontSize: 18 }]}>Video hướng dẫn món ăn</Text>
+                  {history.monAn.videoHuongDan
+                    ? <TrinhPhatVideo url={history.monAn.videoHuongDan} title={`Video hướng dẫn ${history.monAn.tenMonAn}`} />
+                    : <View style={[s.card, { backgroundColor: '#fff0e7' }]}>
+                        <Text style={s.body}>Video chi tiết dành cho gói Chef.</Text>
+                        <Nut title="Xem gói Chef" secondary onPress={() => navigation.navigate('GoiDichVu')} style={{ marginTop: 12 }} />
+                      </View>}
+                </View>
+              )}
               {finished ? (
                 <View style={[s.card, { alignItems: 'center', padding: 28, gap: 16 }]}>
                   <BieuTuong

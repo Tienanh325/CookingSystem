@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Linking, Pressable, Text, TextInput, View } from 'react-native'
+import { Pressable, Text, TextInput, View } from 'react-native'
 import { useXacThuc } from '../nguCanh/NguCanhXacThuc'
 import useTaiNguyen from '../moc/useTaiNguyen'
 import { goiApi, dinhDangNgay } from '../dichVu/KetNoiApi'
@@ -15,6 +15,7 @@ import {
   TrangThai,
 } from '../thanhPhan/GiaoDien'
 import { mauSac, kieuDang as s } from '../ChuDe'
+import TrinhPhatVideo from '../thanhPhan/TrinhPhatVideo'
 export default function ChiTietMonAn({ route, navigation }) {
   const id = route.params.id,
     { nguoiDung } = useXacThuc(),
@@ -215,11 +216,17 @@ export default function ChiTietMonAn({ route, navigation }) {
               {recipe.tenMonAn}
             </Text>
             <Text style={s.muted}>{recipe.moTa || recipe.gioiThieu}</Text>
-            {recipe.videoHuongDan && (
-              <Pressable accessibilityRole="link" onPress={() => Linking.openURL(recipe.videoHuongDan)} style={[s.card, { marginTop: 16, backgroundColor: '#fff0e7' }]}>
-                <Text style={[s.heading, { fontSize: 16 }]}>Video hướng dẫn Chef</Text>
-                <Text style={[s.small, { marginTop: 6 }]}>Cùng {recipe.tenDauBep || 'đầu bếp Cookmate'} thực hiện món ăn từng bước.</Text>
-              </Pressable>
+            {recipe.quyenTruyCap?.coVideoHuongDan && (
+              <View style={{ marginTop: 18, gap: 10 }}>
+                <Text style={[s.heading, { fontSize: 18 }]}>Video hướng dẫn từng bước</Text>
+                {recipe.videoHuongDan
+                  ? <TrinhPhatVideo url={recipe.videoHuongDan} title={`Video hướng dẫn ${recipe.tenMonAn}`} />
+                  : <View style={[s.card, { backgroundColor: '#fff0e7' }]}>
+                      <Text style={[s.heading, { fontSize: 16 }]}>Dành riêng cho thành viên Chef</Text>
+                      <Text style={[s.small, { marginTop: 7, marginBottom: 13 }]}>Nâng cấp Chef để xem video ngay trong Cookmate.</Text>
+                      <Nut title="Xem gói Chef" secondary onPress={() => navigation.navigate('GoiDichVu')} />
+                    </View>}
+              </View>
             )}
             <View
               style={[s.row, { gap: 20, marginVertical: 22, flexWrap: 'wrap' }]}
