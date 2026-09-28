@@ -300,6 +300,7 @@ test('admin creates catalog and publishable recipe; audits persist', async () =>
       tenMonAn: 'Cơm nhà',
       idDanhMuc: category.idDanhMuc,
       anhDaiDien: '/uploads/mon-an/recipe-001.webp',
+      videoHuongDan: 'https://www.youtube.com/watch?v=Z0bJajiyA1Y',
       khauPhan: 2,
       thoiGianChuanBi: 5,
       thoiGianNau: 20,
@@ -312,6 +313,7 @@ test('admin creates catalog and publishable recipe; audits persist', async () =>
   recipe = r.data;
   assert.equal(recipe.buocNaus.length, 1);
   assert.equal(recipe.anhDaiDien, '/uploads/mon-an/recipe-001.webp');
+  assert.equal(recipe.videoHuongDan, 'https://www.youtube.com/watch?v=Z0bJajiyA1Y');
   assert.equal(recipe.tongThoiGian, 25);
   assert.ok((await db.NhatKyHeThong.count()) >= 3);
 });
@@ -325,6 +327,14 @@ test('recipe nutrition is calculated from ingredient weight per serving', async 
   assert.equal(updatedIngredient.status, 200, JSON.stringify(updatedIngredient));
   const detail = await request('GET', `/mon-an/${recipe.idMonAn}`);
   assert.equal(detail.status, 200, JSON.stringify(detail));
+  assert.equal(detail.data.videoHuongDan, null);
+  assert.equal(detail.data.quyenTruyCap.coVideoHuongDan, true);
+  assert.equal(detail.data.quyenTruyCap.duocXemVideo, false);
+  const freeCooking = await request('POST', `/mon-an/${recipe.idMonAn}/lich-su-nau`, {}, user);
+  assert.equal(freeCooking.data.monAn.videoHuongDan, null);
+  assert.equal(freeCooking.data.monAn.coVideoHuongDan, true);
+  assert.equal(freeCooking.data.monAn.duocXemVideo, false);
+  await request('PATCH', `/lich-su-nau/${freeCooking.data.idLichSu}/cancel`, {}, user);
   assert.equal(detail.data.dinhDuong.dayDuDuLieu, true);
   assert.equal(detail.data.dinhDuong.tongMon.nangLuongKcal, 260);
   assert.equal(detail.data.dinhDuong.moiKhauPhan.nangLuongKcal, 130);
@@ -360,6 +370,12 @@ test('manual payment confirmation activates Chef and individual goals', async ()
   assert.equal(chefPayment.status, 201, JSON.stringify(chefPayment));
   assert.equal((await request('PATCH', `/admin/thanh-toan/${chefPayment.data.idYeuCauThanhToan}/xac-nhan`, {}, admin)).status, 200);
   assert.equal((await request('GET', '/goi-dich-vu/me', undefined, user)).data.goiDichVu.maGoi, 'CHEF');
+  const chefRecipe = await request('GET', `/mon-an/${recipe.idMonAn}`, undefined, user);
+  assert.equal(chefRecipe.data.videoHuongDan, 'https://www.youtube.com/watch?v=Z0bJajiyA1Y');
+  assert.equal(chefRecipe.data.quyenTruyCap.duocXemVideo, true);
+  const cooking = await request('POST', `/mon-an/${recipe.idMonAn}/lich-su-nau`, {}, user);
+  assert.equal(cooking.data.monAn.videoHuongDan, 'https://www.youtube.com/watch?v=Z0bJajiyA1Y');
+  assert.equal(cooking.data.monAn.duocXemVideo, true);
   const advice = await request('POST', '/tu-van-ai', { cauHoi: 'Tôi nên cân bằng thực đơn thế nào?' }, user);
   assert.equal(advice.status, 200, JSON.stringify(advice));
   assert.equal(advice.data.nguon, 'COOKMATE_RULES_V1');
