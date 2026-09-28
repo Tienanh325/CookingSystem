@@ -172,7 +172,7 @@ async function run() {
   const start = Math.max(1, Number(process.env.RECIPE_IMAGE_START || 1));
   const limit = Math.max(1, Number(process.env.RECIPE_IMAGE_LIMIT || catalog.length));
   const requestedIds = new Set(String(process.env.RECIPE_IMAGE_IDS || '')
-    .split(',').map(Number).filter(Number.isInteger));
+    .split(',').map(Number).filter((value) => Number.isInteger(value) && value > 0));
   const selected = requestedIds.size
     ? catalog.filter((item) => requestedIds.has(item.index))
     : catalog.filter((item) => item.index >= start).slice(0, limit);
