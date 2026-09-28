@@ -34,6 +34,15 @@ Nếu frontend báo `Route GET /api/admin/... not found` trong khi route đã c�
 
 Dữ liệu trải nghiệm có thể nạp bằng `npm run seed:demo`, kiểm tra bằng `npm run verify:demo`. Xem [DEMO-DATA.md](DEMO-DATA.md) để biết số lượng từng bảng, tài khoản khách hàng và giới hạn dữ liệu mẫu.
 
+Để nạp bộ dữ liệu lớn, khác nhau và đảm bảo **tối thiểu 50 bản ghi cho toàn bộ 28 bảng**, dùng:
+
+```powershell
+npm run seed:large
+npm run verify:large
+```
+
+Script chỉ chạy ngoài production, có transaction và có thể chạy lại mà không nhân đôi dữ liệu. Các vai trò, gói dịch vụ và mục tiêu bổ sung được để ẩn; đăng ký/quyền mua mẫu được để hết hạn nên không ảnh hưởng chính sách Free/Basic/Pro/Chef. Có thể đăng nhập một tài khoản mẫu bằng `data.user01@cookmate.local` / `CookmateDemo@2026` (chỉ dành cho môi trường phát triển).
+
 - JWT yêu cầu secret hợp lệ, kiểm tra tài khoản và vai trò đang hoạt động; đổi mật khẩu/đăng xuất thu hồi các phiên cũ.
 - Đăng ký luôn là USER. Chỉ ADMIN hoạt động truy cập API quản trị; bảo vệ quản trị viên hoạt động cuối cùng.
 - Công thức công khai phải có nguyên liệu và bước. Công thức ẩn chỉ xuất hiện trong API quản trị.
