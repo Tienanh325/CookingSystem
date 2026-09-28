@@ -5,4 +5,8 @@
 **/.env
 **/.env.local
 **/.expo/
-Backend/uploads/
+Backend/uploads/*
+!Backend/uploads/mon-an/
+!Backend/uploads/mon-an/recipe-*.webp
+!Backend/uploads/mon-an/sources.json
+Backend/uploads/mon-an/contact-sheet.jpg
