@@ -25,6 +25,7 @@ import DangCongThuc from '../manHinh/DangCongThuc'
 import LichAn from '../manHinh/LichAn'
 import GoiDichVu from '../manHinh/GoiDichVu'
 import TuVanChef from '../manHinh/TuVanChef'
+import KetQuaThanhToan from '../manHinh/KetQuaThanhToan'
 import { langNgheMoThongBao, layThongBaoDaMoUngDung } from '../dichVu/ThongBaoDay'
 const NganXep: any = createNativeStackNavigator(),
   ThanhTab: any = createBottomTabNavigator()
@@ -47,6 +48,7 @@ const lienKetSau = {
     screens: {
       XacMinhEmail: 'xac-minh-email',
       DatLaiMatKhau: 'dat-lai-mat-khau',
+      KetQuaThanhToan: 'thanh-toan',
     },
   },
 }
@@ -137,6 +139,7 @@ export default function DieuHuongUngDung() {
         <NganXep.Screen name="LichSu" component={ThuVien} />
         <NganXep.Screen name="GoiDichVu" component={GoiDichVu} />
         <NganXep.Screen name="TuVanChef" component={TuVanChef} />
+        <NganXep.Screen name="KetQuaThanhToan" component={KetQuaThanhToan} />
       </NganXep.Navigator>
     </NavigationContainer>
   )
