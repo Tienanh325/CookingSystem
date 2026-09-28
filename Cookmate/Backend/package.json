@@ -12,6 +12,8 @@
     "verify:demo": "node scripts/verify-demo.js",
     "seed:large": "node scripts/seed-large.js",
     "verify:large": "node scripts/verify-large.js",
+    "images:recipes": "node scripts/download-recipe-images.js",
+    "images:review": "node scripts/review-recipe-images.js",
     "test": "node --test tests/*.test.js"
   },
   "keywords": [],
