@@ -8,6 +8,7 @@ const db = Object.fromEntries(Object.entries(require('../src/models')).filter(([
 const sequelize = require('../src/config/database');
 const recipes = require('./demo-data');
 const recipeImages = require('./recipe-images');
+const recipeVideos = require('./recipe-videos.json');
 const credentialsPath = path.join(__dirname, '../.demo-credentials.local');
 const marker = 'COOKMATE_DEMO_V1';
 
@@ -51,16 +52,20 @@ async function seedDemo() {
       const data = recipes[i];
       const category = await ensure('DanhMuc', { tenDanhMuc: data.category }, { moTa: `Gợi ý ${data.category.toLowerCase()} cho bữa ăn gia đình.` });
       const cover = recipeImages[i].publicPath;
+      const video = recipeVideos[i].url;
       const [recipe, created] = await db.MonAn.findOrCreate({
         where: { tenMonAn: data.name }, transaction,
         defaults: { idDanhMuc: category.idDanhMuc, moTa: `${data.name} cho hai người, dễ chuẩn bị tại nhà.`,
           gioiThieu: `${marker}: Công thức mẫu để trải nghiệm ứng dụng với ảnh đúng món ăn.`,
           anhDaiDien: cover, thoiGianChuanBi: data.prep, thoiGianNau: data.cook,
-          tongThoiGian: data.prep + data.cook, khauPhan: 2, doKho: 'DE' },
+          tongThoiGian: data.prep + data.cook, khauPhan: 2, doKho: 'DE', videoHuongDan: video },
       });
       assert.ok(recipe.gioiThieu?.startsWith(marker), `Existing non-demo recipe name collision: ${data.name}`);
       const idMonAn = recipe.idMonAn;
       if (recipe.anhDaiDien !== cover) await recipe.update({ anhDaiDien: cover }, { transaction });
+      if (!recipe.videoHuongDan || /[?&]v=cookmate\d+$/i.test(recipe.videoHuongDan)) {
+        await recipe.update({ videoHuongDan: video }, { transaction });
+      }
       const existingCover = await db.HinhAnhMonAn.findOne({ where: { idMonAn, anhDaiDien: 1 }, transaction });
       if (existingCover) await existingCover.update({ duongDan: cover, moTa: `Ảnh đúng món ${data.name}` }, { transaction });
       // Keep user edits to existing recipes and historical snapshots when re-running.

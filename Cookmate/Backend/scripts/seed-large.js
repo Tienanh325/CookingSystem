@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const db = require('../src/models');
 const sequelize = require('../src/config/database');
 const recipeImages = require('./recipe-images');
+const recipeVideos = require('./recipe-videos.json');
 
 const SIZE = 50;
 const MARKER = 'COOKMATE_LARGE_V1';
@@ -98,6 +99,7 @@ async function seedLarge() {
       const prep = 5 + (i % 4) * 5;
       const cook = 10 + (i % 6) * 5;
       const cover = recipeImages[i + 10].publicPath;
+      const video = recipeVideos[i + 10].url;
       const recipe = await ensure(db.MonAn, { tenMonAn: `${recipeNames[i]} · ${pad(i + 1)}` }, {
         idDanhMuc: categories[i].idDanhMuc, idTacGia: users[i].idNguoiDung, idNguoiDuyet: admin.idNguoiDung,
         nguonNoiDung: 'BIEN_TAP', trangThaiDuyet: 'DA_DUYET', ngayDuyet: day(i),
@@ -108,10 +110,13 @@ async function seedLarge() {
         doKho: ['DE', 'TRUNG_BINH', 'KHO'][i % 3], khauPhan: 2 + (i % 4), luotXem: 20 + i * 3,
         capTruyCapToiThieu: ['FREE', 'FREE', 'BASIC', 'PRO', 'CHEF'][i % 5],
         tenDauBep: i % 5 === 4 ? `Đầu bếp Cookmate ${pad(i + 1)}` : null,
-        videoHuongDan: i % 5 === 4 ? `https://www.youtube.com/watch?v=cookmate${pad(i + 1)}` : null,
+        videoHuongDan: video,
         trangThai: 1,
       });
       if (recipe.anhDaiDien !== cover) await recipe.update({ anhDaiDien: cover }, { transaction });
+      if (!recipe.videoHuongDan || /[?&]v=cookmate\d+$/i.test(recipe.videoHuongDan)) {
+        await recipe.update({ videoHuongDan: video }, { transaction });
+      }
       recipes.push(recipe);
       const ingredient = ingredients[i];
       await ensure(db.MonAnNguyenLieu, { idMonAn: recipe.idMonAn, idNguyenLieu: ingredient.idNguyenLieu }, { soLuong: 120 + i * 2, donVi: 'g', khoiLuongGram: 120 + i * 2, ghiChu: 'Cân sau khi sơ chế.' });
