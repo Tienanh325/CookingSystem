@@ -22,6 +22,8 @@ Push notification sử dụng Expo Push Service. Mobile đăng ký Expo push tok
 
 API mặc định tại `http://localhost:8080/api`. Upload tại `/uploads`.
 
+Ảnh của 60 món ăn được lưu tại `uploads/mon-an` dưới dạng WebP. Chạy `npm run images:recipes` để tải hoặc khôi phục ảnh và cập nhật đường dẫn trong cơ sở dữ liệu; chạy `npm run images:review` để tạo contact sheet phục vụ rà soát. Thông tin trang nguồn của từng ảnh nằm trong `uploads/mon-an/sources.json`.
+
 Nếu frontend báo `Route GET /api/admin/... not found` trong khi route đã có trong code, hãy kiểm tra tiến trình đang giữ cổng 8080 và khởi động lại đúng backend bằng `npm run dev --prefix Backend` từ thư mục gốc. Backend nạp `.env` theo vị trí file, không phụ thuộc thư mục terminal. `nodemon.json` bật theo dõi bằng polling trên Windows để tự nạp lại khi đổi `src` hoặc `.env`.
 
 Địa chỉ frontend: admin dùng proxy của Vite; Expo dùng `EXPO_PUBLIC_API_URL` trỏ tới IP LAN của máy chạy backend. Ảnh `/uploads` cho phép hiển thị từ frontend khác origin. Khi đổi secret hoặc khởi động lại từ phiên backend cũ, nếu phiên đăng nhập không còn hợp lệ hãy đăng nhập lại.
