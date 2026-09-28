@@ -1,8 +1,11 @@
 require('dotenv').config({ path: require('path').join(__dirname, '../.env'), quiet: true });
 const assert = require('node:assert/strict');
+const fs = require('node:fs/promises');
+const path = require('node:path');
 const bcrypt = require('bcryptjs');
 const db = require('../src/models');
 const sequelize = require('../src/config/database');
+const recipeImages = require('./recipe-images');
 
 const SIZE = 50;
 const MARKER = 'COOKMATE_LARGE_V1';
@@ -51,6 +54,9 @@ async function seedLarge() {
   assert.equal(categoryNames.length, SIZE);
   assert.equal(ingredientNames.length, SIZE);
   assert.equal(recipeNames.length, SIZE);
+  for (const image of recipeImages.slice(10)) {
+    await fs.access(path.join(__dirname, '../uploads/mon-an', image.filename));
+  }
   await require('./migrate')();
   const passwordHash = await bcrypt.hash('CookmateDemo@2026', 12);
   const before = Object.fromEntries(await Promise.all(Object.entries(db).map(async ([name, model]) => [name, await model.count()])));
@@ -91,12 +97,13 @@ async function seedLarge() {
     for (let i = 0; i < SIZE; i++) {
       const prep = 5 + (i % 4) * 5;
       const cook = 10 + (i % 6) * 5;
+      const cover = recipeImages[i + 10].publicPath;
       const recipe = await ensure(db.MonAn, { tenMonAn: `${recipeNames[i]} · ${pad(i + 1)}` }, {
         idDanhMuc: categories[i].idDanhMuc, idTacGia: users[i].idNguoiDung, idNguoiDuyet: admin.idNguoiDung,
         nguonNoiDung: 'BIEN_TAP', trangThaiDuyet: 'DA_DUYET', ngayDuyet: day(i),
         moTa: `${recipeNames[i]} với nguyên liệu dễ tìm và khẩu phần cân bằng.`,
         gioiThieu: `${MARKER}: công thức số ${i + 1} trong bộ dữ liệu lớn.`,
-        anhDaiDien: `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=900&sig=${i + 1}`,
+        anhDaiDien: cover,
         thoiGianChuanBi: prep, thoiGianNau: cook, tongThoiGian: prep + cook,
         doKho: ['DE', 'TRUNG_BINH', 'KHO'][i % 3], khauPhan: 2 + (i % 4), luotXem: 20 + i * 3,
         capTruyCapToiThieu: ['FREE', 'FREE', 'BASIC', 'PRO', 'CHEF'][i % 5],
@@ -104,6 +111,7 @@ async function seedLarge() {
         videoHuongDan: i % 5 === 4 ? `https://www.youtube.com/watch?v=cookmate${pad(i + 1)}` : null,
         trangThai: 1,
       });
+      if (recipe.anhDaiDien !== cover) await recipe.update({ anhDaiDien: cover }, { transaction });
       recipes.push(recipe);
       const ingredient = ingredients[i];
       await ensure(db.MonAnNguyenLieu, { idMonAn: recipe.idMonAn, idNguyenLieu: ingredient.idNguyenLieu }, { soLuong: 120 + i * 2, donVi: 'g', khoiLuongGram: 120 + i * 2, ghiChu: 'Cân sau khi sơ chế.' });
@@ -119,7 +127,9 @@ async function seedLarge() {
         if (j === 1) firstStep = step;
       }
       steps.push(firstStep);
-      await ensure(db.HinhAnhMonAn, { idMonAn: recipe.idMonAn, duongDan: recipe.anhDaiDien }, { moTa: `Ảnh minh họa ${recipeNames[i]}`, thuTu: 1, anhDaiDien: 1 });
+      const existingCover = await db.HinhAnhMonAn.findOne({ where: { idMonAn: recipe.idMonAn, anhDaiDien: 1 }, transaction });
+      if (existingCover) await existingCover.update({ duongDan: cover, moTa: `Ảnh đúng món ${recipeNames[i]}` }, { transaction });
+      else await ensure(db.HinhAnhMonAn, { idMonAn: recipe.idMonAn, duongDan: cover }, { moTa: `Ảnh đúng món ${recipeNames[i]}`, thuTu: 1, anhDaiDien: 1 });
     }
 
     const plans = [];

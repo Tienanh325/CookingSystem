@@ -3,11 +3,11 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const bcrypt = require('bcryptjs');
-const sharp = require('sharp');
 const assert = require('node:assert/strict');
 const db = Object.fromEntries(Object.entries(require('../src/models')).filter(([name]) => !name.startsWith('Auth')));
 const sequelize = require('../src/config/database');
 const recipes = require('./demo-data');
+const recipeImages = require('./recipe-images');
 const credentialsPath = path.join(__dirname, '../.demo-credentials.local');
 const marker = 'COOKMATE_DEMO_V1';
 
@@ -26,15 +26,9 @@ async function seedDemo() {
   }
   assert.equal(credentials.length, 10);
   const hashes = await Promise.all(credentials.map(c => bcrypt.hash(c.password, 12)));
-  const imageDir = path.join(__dirname, '../uploads');
-  await fs.mkdir(imageDir, { recursive: true });
+  const imageDir = path.join(__dirname, '../uploads/mon-an');
   for (let i = 0; i < recipes.length; i++) {
-    const imagePath = path.join(imageDir, `demo-v1-recipe-${i + 1}.webp`);
-    try { await fs.access(imagePath); } catch (e) {
-      if (e.code !== 'ENOENT') throw e;
-      const svg = `<svg width="800" height="500" xmlns="http://www.w3.org/2000/svg"><rect width="800" height="500" fill="hsl(${25 + i * 12},65%,92%)"/><circle cx="400" cy="230" r="140" fill="white"/><circle cx="400" cy="230" r="112" fill="#f3d8ad"/><path d="M320 250 Q400 100 480 250 Q400 350 320 250" fill="#729958"/><text x="400" y="245" text-anchor="middle" font-size="48" fill="#6b341c">${String(i + 1).padStart(2, '0')}</text><text x="400" y="420" text-anchor="middle" font-family="sans-serif" font-size="28" fill="#6b341c">COOKMATE - DEMO ILLUSTRATION</text></svg>`;
-      await sharp(Buffer.from(svg)).webp({ quality: 85 }).toFile(imagePath);
-    }
+    await fs.access(path.join(imageDir, recipeImages[i].filename));
   }
   const before = {};
   for (const [name, model] of Object.entries(db)) before[name] = await model.count();
@@ -56,20 +50,19 @@ async function seedDemo() {
     for (let i = 0; i < recipes.length; i++) {
       const data = recipes[i];
       const category = await ensure('DanhMuc', { tenDanhMuc: data.category }, { moTa: `Gợi ý ${data.category.toLowerCase()} cho bữa ăn gia đình.` });
-      const cover = `/uploads/demo-v1-recipe-${i + 1}.webp`;
+      const cover = recipeImages[i].publicPath;
       const [recipe, created] = await db.MonAn.findOrCreate({
         where: { tenMonAn: data.name }, transaction,
         defaults: { idDanhMuc: category.idDanhMuc, moTa: `${data.name} cho hai người, dễ chuẩn bị tại nhà.`,
-          gioiThieu: `${marker}: Công thức mẫu để trải nghiệm ứng dụng; ảnh là minh họa, không phải ảnh món thật.`,
+          gioiThieu: `${marker}: Công thức mẫu để trải nghiệm ứng dụng với ảnh đúng món ăn.`,
           anhDaiDien: cover, thoiGianChuanBi: data.prep, thoiGianNau: data.cook,
           tongThoiGian: data.prep + data.cook, khauPhan: 2, doKho: 'DE' },
       });
       assert.ok(recipe.gioiThieu?.startsWith(marker), `Existing non-demo recipe name collision: ${data.name}`);
       const idMonAn = recipe.idMonAn;
-      // Normalize the first seed's nested URL to the upload URL format accepted by the API.
-      const legacyCover = `/uploads/demo-v1/recipe-${i + 1}.webp`;
-      if (recipe.anhDaiDien === legacyCover) await recipe.update({ anhDaiDien: cover }, { transaction });
-      await db.HinhAnhMonAn.update({ duongDan: cover }, { where: { idMonAn, duongDan: legacyCover }, transaction });
+      if (recipe.anhDaiDien !== cover) await recipe.update({ anhDaiDien: cover }, { transaction });
+      const existingCover = await db.HinhAnhMonAn.findOne({ where: { idMonAn, anhDaiDien: 1 }, transaction });
+      if (existingCover) await existingCover.update({ duongDan: cover, moTa: `Ảnh đúng món ${data.name}` }, { transaction });
       // Keep user edits to existing recipes and historical snapshots when re-running.
       if (created) {
         for (const [name, amount, unit] of data.ingredients) {
@@ -81,7 +74,7 @@ async function seedDemo() {
           thoiGian: j === 1 ? data.cook : 0,
         });
       }
-      await ensure('HinhAnhMonAn', { idMonAn, duongDan: cover }, { moTa: `Ảnh minh họa mẫu ${data.name}`, thuTu: 1, anhDaiDien: 1 });
+      if (!existingCover) await ensure('HinhAnhMonAn', { idMonAn, duongDan: cover }, { moTa: `Ảnh đúng món ${data.name}`, thuTu: 1, anhDaiDien: 1 });
       const user = users[i], idNguoiDung = user.idNguoiDung;
       await ensure('YeuThich', { idNguoiDung, idMonAn });
       await ensure('DanhGia', { idNguoiDung, idMonAn }, { soSao: i % 2 ? 4 : 5, noiDung: `[Demo] ${data.name}: các bước dễ theo dõi, khẩu phần phù hợp.` });

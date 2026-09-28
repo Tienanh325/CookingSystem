@@ -40,7 +40,7 @@ async function verifyDemo() {
     const reviews = await db.DanhGia.findAll({ where: { idMonAn: recipe.idMonAn, trangThai: 1 } });
     const average = reviews.length ? reviews.reduce((sum, r) => sum + r.soSao, 0) / reviews.length : 0;
     assert.equal(Number(recipe.diemDanhGia), Number(average.toFixed(2)));
-    if (recipe.anhDaiDien?.startsWith('/uploads/demo-v1-')) await fs.access(path.join(__dirname, '..', recipe.anhDaiDien));
+    if (recipe.anhDaiDien?.startsWith('/uploads/')) await fs.access(path.join(__dirname, '..', recipe.anhDaiDien.slice(1)));
   }
   const histories = await db.LichSuNau.findAll({ include: [{ model: db.ChiTietLichSuNau, as: 'chiTietLichSuNaus', include: [{ model: db.BuocNau, as: 'buocNau' }] }] });
   for (const history of histories) {
