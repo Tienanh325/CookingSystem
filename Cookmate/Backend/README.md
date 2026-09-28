@@ -53,10 +53,26 @@ Script chỉ chạy ngoài production, có transaction và có thể chạy lạ
 - Ghi nhật ký thao tác quản trị; kiểm tra dữ liệu đầu vào, người nhận thông báo và giới hạn tần suất xác thực/upload.
 - Gói miễn phí giới hạn 10 công thức chưa từng mở mỗi ngày; công thức đã mở không tính lại. Cấp truy cập FREE/BASIC/PRO/CHEF được kiểm tra khi mở chi tiết.
 - Lịch ăn thủ công dùng được sau đăng nhập; tạo tự động và danh sách mua sắm yêu cầu Pro/Chef. Dinh dưỡng được ước tính từ dữ liệu mỗi 100 g và khối lượng quy đổi của nguyên liệu.
-- Thanh toán `/api/thanh-toan` đang ở chế độ đối soát thủ công; chỉ admin xác nhận tại `/api/admin/thanh-toan/:id/xac-nhan`. Không tự kích hoạt quyền chỉ dựa trên dữ liệu từ client.
+- Thanh toán thật qua VNPAY dùng URL có chữ ký HMAC-SHA512. Quyền chỉ được kích hoạt từ IPN có chữ ký, terminal, mã đơn và số tiền hợp lệ; Return URL chỉ chuyển người dùng về ứng dụng. Luồng xác nhận thủ công cũ vẫn giữ làm phương án quản trị riêng và không thể xác nhận giao dịch VNPAY.
 - `/api/tu-van-ai` chỉ dành cho Chef và hiện dùng bộ quy tắc minh bạch (`COOKMATE_RULES_V1`), luôn kèm cảnh báo không thay thế tư vấn y tế.
 
 Các endpoint quản trị mở rộng nằm dưới `/api/admin`; các route hiện có tiếp tục nằm trong `src/routes`. Thông báo được lưu trong ứng dụng và đồng thời gửi push qua Expo tới các thiết bị đã đăng ký.
+
+## Thanh toán VNPAY
+
+Đăng ký merchant Sandbox tại `https://sandbox.vnpayment.vn/devreg/`, sau đó đặt các biến sau trong `.env` cục bộ; không commit mã terminal hoặc secret:
+
+```dotenv
+VNPAY_TMN_CODE=...
+VNPAY_HASH_SECRET=...
+VNPAY_PAYMENT_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+VNPAY_RETURN_URL=https://your-public-api.example/api/thanh-toan/vnpay/return
+VNPAY_APP_RETURN_URL=cookmate://thanh-toan
+```
+
+Đăng ký IPN URL tại VNPAY là `https://your-public-api.example/api/thanh-toan/vnpay/ipn`. Cả IPN và Return URL cần truy cập được qua HTTPS công khai; localhost không nhận được callback từ VNPAY. Ứng dụng mobile mở URL thanh toán do `POST /api/thanh-toan/vnpay/tao` trả về và nhận kết quả qua deep link `cookmate://thanh-toan`. Hãy dùng development build/ứng dụng cài thật để kiểm tra custom scheme, không dựa vào Expo Go.
+
+Khi chuyển production, thay payment URL và bộ khóa bằng thông tin VNPAY production; không dùng khóa Sandbox. Tài liệu kỹ thuật chính thức: `https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html`.
 
 ## Kiểm thử
 
