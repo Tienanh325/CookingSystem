@@ -8,7 +8,7 @@ const image = z
   .string()
   .max(255)
   .refine(
-    (v) => !v || /^https?:\/\//i.test(v) || /^\/uploads\/[\w.-]+$/.test(v),
+    (v) => !v || /^https?:\/\//i.test(v) || /^\/uploads\/(?:[\w.-]+\/)*[\w.-]+$/.test(v),
     'Đường dẫn ảnh không hợp lệ',
   )
   .nullable()
