@@ -103,6 +103,7 @@ export default function RecipeEditor() {
     try {
       const payload = {}
       for (const key of Object.keys(blank)) payload[key] = form[key]
+      payload.videoHuongDan = form.videoHuongDan || null
       payload.idDanhMuc = Number(form.idDanhMuc)
       payload.buocNaus = form.buocNaus.map((s, i) => ({ ...s, soThuTu: i + 1 }))
       payload.nguyenLieus = form.nguyenLieus.map((x) => ({
