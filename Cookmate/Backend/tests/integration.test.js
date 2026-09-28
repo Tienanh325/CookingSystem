@@ -10,6 +10,10 @@ const dbName = `cookmate_test_${Date.now()}_${crypto.randomBytes(3).toString('he
 process.env.DB_NAME = dbName;
 process.env.JWT_SECRET = crypto.randomBytes(48).toString('hex');
 process.env.NODE_ENV = 'test';
+process.env.VNPAY_TMN_CODE = 'COOKTEST';
+process.env.VNPAY_HASH_SECRET = 'test-vnpay-secret-at-least-32-characters';
+process.env.VNPAY_RETURN_URL = 'https://api.cookmate.test/api/thanh-toan/vnpay/return';
+process.env.VNPAY_APP_RETURN_URL = 'cookmate://thanh-toan';
 let connection,
   sequelize,
   db,
@@ -364,6 +368,50 @@ test('manual payment confirmation activates Chef and individual goals', async ()
   assert.equal(goalPayment.status, 201, JSON.stringify(goalPayment));
   assert.equal((await request('PATCH', `/admin/thanh-toan/${goalPayment.data.idYeuCauThanhToan}/xac-nhan`, {}, admin)).status, 200);
   assert.equal((await request('GET', '/goi-dich-vu/me', undefined, other)).data.mucTieuAnUongs[0].maMucTieu, 'VEGETARIAN');
+});
+test('VNPAY IPN verifies signature and amount before activating access', async () => {
+  const catalog = (await request('GET', '/goi-dich-vu')).data;
+  const goal = catalog.mucTieuAnUongs.find((item) => item.maMucTieu === 'EAT_HEALTHY');
+  const started = await request('POST', '/thanh-toan/vnpay/tao', {
+    loaiSanPham: 'MUC_TIEU', idMucTieuAnUong: goal.idMucTieuAnUong,
+  }, user);
+  assert.equal(started.status, 201, JSON.stringify(started));
+  assert.match(started.data.paymentUrl, /^https:\/\/sandbox\.vnpayment\.vn\//);
+  const paymentUrl = new URL(started.data.paymentUrl);
+  const initial = Object.fromEntries(paymentUrl.searchParams);
+  const vnpay = require('../src/services/vnpay');
+  assert.equal(vnpay.verifyCallback(initial).valid, true);
+  assert.equal((await request('PATCH', `/admin/thanh-toan/${started.data.idYeuCauThanhToan}/xac-nhan`, {}, admin)).status, 409);
+
+  const callback = {
+    ...initial,
+    vnp_ResponseCode: '00',
+    vnp_TransactionStatus: '00',
+    vnp_TransactionNo: 'TEST123456',
+  };
+  delete callback.vnp_SecureHash;
+  const invalid = new URLSearchParams({ ...callback, vnp_SecureHash: 'invalid' });
+  const invalidResult = await fetch(`${base}/thanh-toan/vnpay/ipn?${invalid}`).then((response) => response.json());
+  assert.equal(invalidResult.RspCode, '97');
+
+  const wrongAmount = { ...callback, vnp_Amount: String(Number(callback.vnp_Amount) + 100) };
+  wrongAmount.vnp_SecureHash = vnpay.sign(wrongAmount, process.env.VNPAY_HASH_SECRET);
+  const amountResult = await fetch(`${base}/thanh-toan/vnpay/ipn?${new URLSearchParams(wrongAmount)}`).then((response) => response.json());
+  assert.equal(amountResult.RspCode, '04');
+
+  callback.vnp_SecureHash = vnpay.sign(callback, process.env.VNPAY_HASH_SECRET);
+  const callbackQuery = new URLSearchParams(callback);
+  const accepted = await fetch(`${base}/thanh-toan/vnpay/ipn?${callbackQuery}`).then((response) => response.json());
+  assert.equal(accepted.RspCode, '00');
+  const payment = await request('GET', `/thanh-toan/${started.data.idYeuCauThanhToan}`, undefined, user);
+  assert.equal(payment.data.trangThai, 'DA_THANH_TOAN');
+  assert.equal(payment.data.maGiaoDichNhaCungCap, 'TEST123456');
+  const repeated = await fetch(`${base}/thanh-toan/vnpay/ipn?${callbackQuery}`).then((response) => response.json());
+  assert.equal(repeated.RspCode, '02');
+
+  const returned = await fetch(`${base}/thanh-toan/vnpay/return?${callbackQuery}`, { redirect: 'manual' });
+  assert.equal(returned.status, 302);
+  assert.match(returned.headers.get('location'), /^cookmate:\/\/thanh-toan\?/);
 });
 test('users submit owned recipe drafts for admin moderation', async () => {
   const draft = await request(
