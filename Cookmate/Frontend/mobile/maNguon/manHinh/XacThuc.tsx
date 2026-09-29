@@ -20,12 +20,13 @@ export default function XacThuc({ navigation, route }) {
     return () => controller.abort()
   }, [])
   const [name, setName] = useState(''),
-    [email, setEmail] = useState(''),
+    [email, setEmail] = useState(route.params?.email || ''),
     [password, setPassword] = useState(''),
     [confirm, setConfirm] = useState(''),
     [visible, setVisible] = useState(false),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState('')
+    [error, setError] = useState(''),
+    [success] = useState(route.params?.message || '')
   async function submit() {
     setError('')
     if (!email.trim() || !password || (register && !name.trim())) {
@@ -39,7 +40,7 @@ export default function XacThuc({ navigation, route }) {
     setBusy(true)
     try {
       if (register) {
-        const ketQua = await goiApi('/auth/register', {
+        await goiApi('/auth/register', {
           method: 'POST',
           body: {
             email: email.trim().toLowerCase(),
@@ -47,7 +48,10 @@ export default function XacThuc({ navigation, route }) {
             hoTen: name.trim(),
           },
         })
-        navigation.replace('XacMinhEmail', { email: ketQua.data.email })
+        navigation.replace('DangNhap', {
+          email: email.trim().toLowerCase(),
+          message: 'Đăng ký thành công. Bạn có thể đăng nhập ngay.',
+        })
       } else {
         await xacThucTaiKhoan({
           email: email.trim().toLowerCase(),
@@ -56,10 +60,6 @@ export default function XacThuc({ navigation, route }) {
         navigation.popToTop()
       }
     } catch (e: any) {
-      if (!register && e.status === 403 && e.message.includes('xác minh')) {
-        navigation.navigate('XacMinhEmail', { email: email.trim().toLowerCase() })
-        return
-      }
       setError(e.message)
     } finally {
       setBusy(false)
@@ -170,6 +170,7 @@ export default function XacThuc({ navigation, route }) {
           />
         )}
         <ThongDiep>{error}</ThongDiep>
+        <ThongDiep success>{success}</ThongDiep>
         <Nut
           title={register ? 'Tạo tài khoản' : 'Đăng nhập'}
           icon="arrow-forward"

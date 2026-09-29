@@ -14,12 +14,9 @@ const {
   damBaoEmailSanSang,
   datLaiMatKhau,
   guiThuDatLaiMatKhau,
-  guiThuXacMinh,
-  xacMinhEmail,
 } = require('../services/xacThucEmail');
 
 const DEFAULT_USER_ROLES = ['USER', 'NGUOI_DUNG', 'KHACH_HANG'];
-const ADMIN_ROLES = ['ADMIN', 'QUAN_TRI', 'ADMINISTRATOR'];
 
 const createToken = (user) => {
   return jwt.sign(
@@ -96,8 +93,6 @@ const AuthController = {
       return sendError(res, 409, 'Email already exists');
     }
 
-    await damBaoEmailSanSang();
-
     const role = await findOrCreateDefaultRole();
     const hashedPassword = await bcrypt.hash(matKhau, 12);
 
@@ -107,7 +102,8 @@ const AuthController = {
       email,
       matKhau: hashedPassword,
       soDienThoai: soDienThoai || null,
-      emailDaXacMinh: 0,
+      emailDaXacMinh: 1,
+      thoiGianXacMinhEmail: new Date(),
       trangThai: 1,
     });
 
@@ -121,10 +117,9 @@ const AuthController = {
       ],
     });
 
-    await guiThuXacMinh(userWithRole);
-    return sendSuccess(res, 201, 'Đăng ký thành công. Hãy nhập mã 6 số đã gửi tới email.', {
+    return sendSuccess(res, 201, 'Đăng ký thành công. Bạn có thể đăng nhập ngay.', {
       email: userWithRole.email,
-      canDangNhap: false,
+      canDangNhap: true,
     });
   }),
 
@@ -157,13 +152,6 @@ const AuthController = {
 
     if (!passwordMatched) {
       return sendError(res, 401, 'Invalid email or password');
-    }
-
-    if (
-      !user.emailDaXacMinh &&
-      !ADMIN_ROLES.includes(String(user.vaiTro?.tenVaiTro || '').toUpperCase())
-    ) {
-      return sendError(res, 403, 'Email chưa được xác minh. Hãy nhập mã 6 số đã gửi cho bạn.');
     }
 
     return sendSuccess(res, 200, 'Login successfully', buildAuthPayload(user));
@@ -239,21 +227,6 @@ const AuthController = {
         { where: { idNguoiDung: req.auth.idNguoiDung } },
       );
     return sendSuccess(res, 200, 'Đã đăng xuất khỏi tất cả thiết bị.');
-  }),
-  resendVerification: asyncHandler(async (req, res) => {
-    const email = normalizeText(req.body.email).toLowerCase();
-    await damBaoEmailSanSang();
-    const user = await db.NguoiDung.findOne({ where: { email, trangThai: 1 } });
-    if (user && !user.emailDaXacMinh) await guiThuXacMinh(user);
-    return sendSuccess(
-      res,
-      200,
-      'Nếu email hợp lệ và chưa xác minh, Cookmate đã gửi một mã 6 số mới.',
-    );
-  }),
-  verifyEmail: asyncHandler(async (req, res) => {
-    await xacMinhEmail(req.body.email, req.body.maXacMinh);
-    return sendSuccess(res, 200, 'Email đã được xác minh. Bạn có thể đăng nhập.');
   }),
   forgotPassword: asyncHandler(async (req, res) => {
     const email = normalizeText(req.body.email).toLowerCase();

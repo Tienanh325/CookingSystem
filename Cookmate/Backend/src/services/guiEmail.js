@@ -115,7 +115,7 @@ const guiEmail = async ({ den, tieuDe, vanBan, html, thongTinKiemThu }) => {
     chuKyDaXacNhan = '';
     console.error(`[EMAIL] Gửi thư thất bại: ${error.message}`);
     throw taoLoiDichVuEmail(
-      'Không thể gửi email xác minh lúc này. Vui lòng thử lại sau.',
+      'Không thể gửi email lúc này. Vui lòng thử lại sau.',
       error,
     );
   }

@@ -46,7 +46,6 @@ const lienKetSau = {
   prefixes: ['cookmate://'],
   config: {
     screens: {
-      XacMinhEmail: 'xac-minh-email',
       DatLaiMatKhau: 'dat-lai-mat-khau',
       KetQuaThanhToan: 'thanh-toan',
     },
@@ -133,7 +132,6 @@ export default function DieuHuongUngDung() {
         <NganXep.Screen name="DoiMatKhau" component={ChinhSuaCaNhan} />
         <NganXep.Screen name="QuenMatKhau" component={KhoiPhucTaiKhoan} />
         <NganXep.Screen name="DatLaiMatKhau" component={KhoiPhucTaiKhoan} />
-        <NganXep.Screen name="XacMinhEmail" component={KhoiPhucTaiKhoan} />
         <NganXep.Screen name="BaiDangCuaToi" component={BaiDangCuaToi} />
         <NganXep.Screen name="DangCongThuc" component={DangCongThuc} />
         <NganXep.Screen name="LichSu" component={ThuVien} />

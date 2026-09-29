@@ -74,6 +74,7 @@ before(async () => {
   await new Promise((r) => server.once('listening', r));
   base = `http://127.0.0.1:${server.address().port}/api`;
   admin = await login('admin@test.local');
+  const emailCount = hopThuKiemThu.length;
   for (const email of ['user@test.local', 'other@test.local']) {
     const r = await request('POST', '/auth/register', {
       hoTen: 'Test User',
@@ -82,15 +83,11 @@ before(async () => {
     });
     assert.equal(r.status, 201);
     assert.equal(r.data.token, undefined);
-    const thu = hopThuKiemThu.findLast((item) => item.den === email && item.loai === 'EMAIL_VERIFY');
-    assert.match(thu?.maXacMinh, /^\d{6}$/);
-    assert.equal(
-      (await request('POST', '/auth/verify-email', { email, maXacMinh: thu.maXacMinh })).status,
-      200,
-    );
+    assert.equal(r.data.canDangNhap, true);
     if (email.startsWith('user')) user = await login(email);
     else other = await login(email);
   }
+  assert.equal(hopThuKiemThu.length, emailCount);
 });
 after(async () => {
   if (server) await new Promise((r) => server.close(r));
@@ -102,15 +99,40 @@ after(async () => {
   }
 });
 
-test('retired phone OTP endpoints are unavailable', async () => {
+test('retired verification endpoints are unavailable', async () => {
   const methods = await request('GET', '/auth/methods');
   assert.equal(methods.status, 200);
   assert.equal(methods.data.phone, undefined);
   assert.equal(methods.data.localOtp, undefined);
   assert.equal((await request('POST', '/auth/otp/request', { phone: '0912345678' })).status, 404);
   assert.equal((await request('POST', '/auth/otp/verify', { challengeId: crypto.randomUUID(), code: '123456' })).status, 404);
+  assert.equal((await request('POST', '/auth/resend-verification', { email: 'user@test.local' })).status, 404);
+  assert.equal(
+    (
+      await request('POST', '/auth/verify-email', {
+        email: 'user@test.local',
+        maXacMinh: '123456',
+      })
+    ).status,
+    404,
+  );
 });
-test('email verification uses a six-digit code and password reset uses a one-time token', async () => {
+test('legacy accounts can login without email verification', async () => {
+  const email = 'legacy-unverified@test.local';
+  await db.NguoiDung.create({
+    idVaiTro: userRole.idVaiTro,
+    hoTen: 'Legacy User',
+    email,
+    matKhau: await bcrypt.hash('Password123!', 12),
+    emailDaXacMinh: 0,
+    thoiGianXacMinhEmail: null,
+  });
+  assert.equal(
+    (await request('POST', '/auth/login', { email, matKhau: 'Password123!' })).status,
+    200,
+  );
+});
+test('registration allows immediate login and password reset uses a one-time token', async () => {
   const email = 'recovery@test.local';
   const registered = await request('POST', '/auth/register', {
     hoTen: 'Recovery User',
@@ -119,47 +141,7 @@ test('email verification uses a six-digit code and password reset uses a one-tim
   });
   assert.equal(registered.status, 201, JSON.stringify(registered));
   assert.equal(registered.data.token, undefined);
-  assert.equal((await request('POST', '/auth/login', { email, matKhau: 'Original123!' })).status, 403);
-  assert.equal(
-    (await request('POST', '/auth/verify-email', { email, maXacMinh: '000000' })).status,
-    400,
-  );
-  const verifyMailDau = hopThuKiemThu.findLast(
-    (item) => item.den === email && item.loai === 'EMAIL_VERIFY',
-  );
-  assert.match(verifyMailDau.maXacMinh, /^\d{6}$/);
-  assert.doesNotMatch(verifyMailDau.vanBan, /https?:\/\/|cookmate:\/\//);
-  assert.equal(
-    (await request('POST', '/auth/resend-verification', { email })).status,
-    200,
-  );
-  const verifyMail = hopThuKiemThu.findLast(
-    (item) => item.den === email && item.loai === 'EMAIL_VERIFY',
-  );
-  assert.match(verifyMail.maXacMinh, /^\d{6}$/);
-  assert.notEqual(verifyMail.maXacMinh, verifyMailDau.maXacMinh);
-  await assert.rejects(
-    require('../src/services/xacThucEmail').xacMinhEmail(email, verifyMailDau.maXacMinh),
-    /không đúng hoặc đã hết hạn/,
-  );
-  assert.equal(
-    (
-      await request('POST', '/auth/verify-email', {
-        email,
-        maXacMinh: verifyMail.maXacMinh,
-      })
-    ).status,
-    200,
-  );
-  assert.equal(
-    (
-      await request('POST', '/auth/verify-email', {
-        email,
-        maXacMinh: verifyMail.maXacMinh,
-      })
-    ).status,
-    400,
-  );
+  assert.equal(registered.data.canDangNhap, true);
   const session = await login(email, 'Original123!');
   const emailCount = hopThuKiemThu.length;
   assert.equal(

@@ -1,5 +1,5 @@
 ---
-status: investigating
+status: resolved
 trigger: "Đăng ký thành công nhưng Gmail không nhận được thư xác minh"
 created: 2026-09-29
 updated: 2026-09-29
@@ -35,3 +35,10 @@ Nguyên nhân gốc đã xác nhận: SMTP chưa được cấu hình và fallba
 - Trả lỗi 503 có thể hiển thị cho ứng dụng nếu dịch vụ email chưa sẵn sàng.
 - Thêm cấu hình mẫu Gmail và lệnh kiểm tra SMTP.
 - Theo yêu cầu cập nhật, email xác minh chỉ chứa mã OTP 6 số thay vì liên kết deep link.
+
+## Resolution
+
+- root_cause: Luồng đăng ký phụ thuộc dịch vụ SMTP Gmail trong khi thông tin xác thực SMTP không hợp lệ.
+- fix: Theo quyết định sản phẩm mới, gỡ toàn bộ bước xác minh email khỏi đăng ký/đăng nhập; SMTP chỉ còn phục vụ quên mật khẩu.
+- verification: 24/24 kiểm thử backend đạt, bao gồm đăng nhập ngay sau đăng ký và tài khoản cũ chưa xác minh; Expo dependency check và TypeScript đạt.
+- files_changed: Backend auth controller/routes/services/validation/tests/docs; mobile registration, navigation and account recovery screens.

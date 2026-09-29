@@ -47,8 +47,6 @@ app.use(
 app.use(
   [
     '/api/auth/forgot-password',
-    '/api/auth/resend-verification',
-    '/api/auth/verify-email',
     '/api/auth/reset-password',
   ],
   rateLimit({

@@ -172,13 +172,8 @@ function validateRequest(req, res, next) {
         .transform((v) => v.toLowerCase()),
       matKhau: z.string().min(1).max(200),
     });
-  else if (['/auth/forgot-password', '/auth/resend-verification'].includes(path))
+  else if (path === '/auth/forgot-password')
     schema = z.object({ email: z.email().max(150).transform((v) => v.toLowerCase()) });
-  else if (path === '/auth/verify-email')
-    schema = z.object({
-      email: z.email().max(150).transform((v) => v.toLowerCase()),
-      maXacMinh: z.string().regex(/^\d{6}$/),
-    });
   else if (path === '/auth/reset-password')
     schema = z.object({ token: z.string().regex(/^[a-f0-9]{64}$/), matKhauMoi: password });
   else if (path === '/auth/me') schema = profile;
