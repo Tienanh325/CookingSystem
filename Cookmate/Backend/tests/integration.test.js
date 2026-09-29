@@ -99,13 +99,20 @@ after(async () => {
   }
 });
 
-test('retired verification endpoints are unavailable', async () => {
-  const methods = await request('GET', '/auth/methods');
-  assert.equal(methods.status, 200);
-  assert.equal(methods.data.phone, undefined);
-  assert.equal(methods.data.localOtp, undefined);
+test('retired authentication alternatives are unavailable', async () => {
+  assert.equal((await request('GET', '/auth/methods')).status, 404);
   assert.equal((await request('POST', '/auth/otp/request', { phone: '0912345678' })).status, 404);
   assert.equal((await request('POST', '/auth/otp/verify', { challengeId: crypto.randomUUID(), code: '123456' })).status, 404);
+  assert.equal(
+    (
+      await request('POST', '/auth/oauth/start', {
+        provider: 'google',
+        redirectUri: 'cookmate://auth',
+        challenge: '0'.repeat(64),
+      })
+    ).status,
+    404,
+  );
   assert.equal((await request('POST', '/auth/resend-verification', { email: 'user@test.local' })).status, 404);
   assert.equal(
     (
@@ -175,84 +182,6 @@ test('registration allows immediate login and password reset uses a one-time tok
   );
   assert.equal((await request('POST', '/auth/login', { email, matKhau: 'Original123!' })).status, 401);
   assert.ok(await login(email, 'Replacement123!'));
-});
-test('OAuth validates state, redirect, signed identity, proof key and one-time ticket', async () => {
-  const service = require('../src/services/customerAuth');
-  process.env.AUTH_PUBLIC_URL = 'https://cookmate.example';
-  process.env.GOOGLE_CLIENT_ID = 'test-client';
-  process.env.GOOGLE_CLIENT_SECRET = 'test-secret';
-  process.env.AUTH_REDIRECT_URIS = 'cookmate://auth';
-  const verifier = crypto.randomBytes(32).toString('hex');
-  const challenge = crypto.createHash('sha256').update(verifier).digest('hex');
-  await assert.rejects(service.startOAuth('google', 'https://attacker.example', challenge));
-  await assert.rejects(service.oauthCallback('google', crypto.randomUUID(), 'bad-code'));
-  const start = await service.startOAuth('google', 'cookmate://auth', challenge);
-  const state = await db.AuthChallenge.findByPk(start.state);
-  const { generateKeyPair, exportJWK, SignJWT } = await import('jose');
-  const { publicKey, privateKey } = await generateKeyPair('RS256');
-  const jwk = { ...(await exportJWK(publicKey)), kid: 'test-key', alg: 'RS256', use: 'sig' };
-  const identity = await new SignJWT({
-    sub: 'google-user-123',
-    nonce: state.payload.nonce,
-    email: 'oauth@test.local',
-    email_verified: true,
-    name: 'Google Customer',
-  })
-    .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
-    .setIssuer('https://accounts.google.com')
-    .setAudience('test-client')
-    .setIssuedAt()
-    .setExpirationTime('5m')
-    .sign(privateKey);
-  const originalFetch = global.fetch;
-  global.fetch = async (url, options) => {
-    if (String(url) === 'https://oauth2.googleapis.com/token')
-      return Response.json({ id_token: identity });
-    if (String(url) === 'https://www.googleapis.com/oauth2/v3/certs')
-      return Response.json({ keys: [jwk] });
-    return originalFetch(url, options);
-  };
-  let callback;
-  try {
-    callback = new URL(await service.oauthCallback('google', start.state, 'test-code'));
-  } finally {
-    global.fetch = originalFetch;
-  }
-  assert.equal(callback.searchParams.get('error'), null);
-  const ticket = callback.searchParams.get('ticket');
-  assert.ok(ticket);
-  await assert.rejects(service.exchangeTicket(ticket, 'wrong-verifier'));
-  const session = await service.exchangeTicket(ticket, verifier);
-  assert.equal(session.user.email, 'oauth@test.local');
-  assert.equal(session.user.vaiTro.tenVaiTro, 'USER');
-  await assert.rejects(service.exchangeTicket(ticket, verifier));
-  await assert.rejects(service.oauthCallback('google', start.state, 'test-code'));
-  const badNonceStart = await service.startOAuth('google', 'cookmate://auth', challenge);
-  global.fetch = async (url, options) => {
-    if (String(url) === 'https://oauth2.googleapis.com/token') return Response.json({ id_token: identity });
-    return originalFetch(url, options);
-  };
-  try {
-    const denied = new URL(await service.oauthCallback('google', badNonceStart.state, 'other-code'));
-    assert.ok(denied.searchParams.get('error'));
-    assert.equal(denied.searchParams.get('ticket'), null);
-  } finally { global.fetch = originalFetch; }
-  async function fixtureTicket(subject, email, expiresAt = new Date(Date.now() + 60000)) {
-    const value = crypto.randomBytes(32).toString('hex');
-    await db.AuthChallenge.create({ id: crypto.randomUUID(), kind: 'ticket', subject: crypto.createHash('sha256').update(value).digest('hex'), payload: { provider: 'google', subject, email, challenge }, expiresAt });
-    return value;
-  }
-  const collision = await fixtureTicket('different-google-user', 'user@test.local');
-  await assert.rejects(service.exchangeTicket(collision, verifier), /Email đã có tài khoản/);
-  const expired = await fixtureTicket('expired-user', null, new Date(Date.now() - 1000));
-  await assert.rejects(service.exchangeTicket(expired, verifier));
-  const returning = await fixtureTicket('google-user-123', 'changed-email@test.local');
-  assert.equal((await service.exchangeTicket(returning, verifier)).user.idNguoiDung, session.user.idNguoiDung);
-  const caseMismatch = await fixtureTicket('GOOGLE-USER-123', null);
-  await assert.rejects(service.exchangeTicket(caseMismatch, verifier), /không khớp/);
-  delete process.env.AUTH_PUBLIC_URL;
-  delete process.env.GOOGLE_CLIENT_ID;
-  delete process.env.GOOGLE_CLIENT_SECRET;
 });
 test('authentication, validation and protected admin API', async () => {
   assert.equal(

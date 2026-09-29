@@ -34,11 +34,11 @@ Có thể dùng Expo Go để xem các chức năng không phụ thuộc native 
 
 Video hướng dẫn chi tiết dành cho thành viên Chef được nhúng và phát trực tiếp trong màn hình chi tiết món ăn hoặc luồng nấu từng bước. Ứng dụng dùng trình phát YouTube riêng tư (`youtube-nocookie.com`) trên web và WebView trên Android/iOS, không chuyển người dùng ra trình duyệt ngoài.
 
-Đăng nhập bằng email/mật khẩu; Google/Apple bật theo cấu hình backend. Xem [hướng dẫn xác thực](../../Backend/CUSTOMER-AUTH.md); Zalo hiện chưa khả dụng. Đã bỏ đăng nhập điện thoại/OTP và Face ID/vân tay.
+Đăng ký và đăng nhập chỉ dùng email/mật khẩu. Google, Apple, Zalo, điện thoại/OTP và Face ID/vân tay đã được gỡ khỏi giao diện lẫn API. Xem [hướng dẫn xác thực](../../Backend/CUSTOMER-AUTH.md).
 
 Khám phá, yêu thích, lịch sử và thông báo có phân trang trước/sau, tổng kết quả và chọn 5/10/20 mục (mặc định 5). Đổi trang cuộn lên đầu danh sách; đổi số mục quay về trang 1. Bình luận và đánh giá phân trang riêng, 5 mục/trang. Sau xóa, trang vượt quá tổng số trang tự điều chỉnh về trang hợp lệ.
 
-Khám phá món, tìm theo từ khóa và lọc nâng cao theo danh mục, độ khó, thời gian, nhiều nguyên liệu; sắp xếp theo độ mới, độ phổ biến, đánh giá, thời gian hoặc tên. Ứng dụng còn có xác minh email, quên/đặt lại mật khẩu bằng liên kết một lần, push notification qua Expo, chi tiết và đổi khẩu phần, đăng ký/đăng nhập, yêu thích, nấu từng bước kèm bộ đếm giờ, lịch sử nấu, đánh giá và bình luận/trả lời, thông báo đã đọc, sửa hồ sơ, đổi mật khẩu và đăng xuất. Khách chưa đăng nhập vẫn xem được món công khai. Token native lưu bằng SecureStore; bản web xem thử dùng sessionStorage.
+Khám phá món, tìm theo từ khóa và lọc nâng cao theo danh mục, độ khó, thời gian, nhiều nguyên liệu; sắp xếp theo độ mới, độ phổ biến, đánh giá, thời gian hoặc tên. Ứng dụng còn có quên/đặt lại mật khẩu bằng liên kết một lần, push notification qua Expo, chi tiết và đổi khẩu phần, đăng ký/đăng nhập, yêu thích, nấu từng bước kèm bộ đếm giờ, lịch sử nấu, đánh giá và bình luận/trả lời, thông báo đã đọc, sửa hồ sơ, đổi mật khẩu và đăng xuất. Khách chưa đăng nhập vẫn xem được món công khai. Token native lưu bằng SecureStore; bản web xem thử dùng sessionStorage.
 
 Theo yêu cầu, không có màn hình đăng công thức hoặc cộng đồng. Giao diện kem/cam dựa trên ảnh tham chiếu; chưa đối chiếu được toàn bộ thiết kế từ link Stitch.
 

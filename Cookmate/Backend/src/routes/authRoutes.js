@@ -4,7 +4,6 @@ const AuthController = require('../controllers/AuthController');
 const { authenticate } = require('../middleware/authMiddleware');
 
 const router = express.Router();
-router.use(require('./customerAuthRoutes'));
 
 router.post('/register', AuthController.register);
 router.post('/login', AuthController.login);

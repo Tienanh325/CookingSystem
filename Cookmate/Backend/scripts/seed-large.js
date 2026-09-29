@@ -186,7 +186,6 @@ async function seedLarge() {
     for (let i = 0; i < SIZE; i++) {
       const user = users[i], recipe = recipes[i], step = steps[i], plan = plans[i], goal = goals[i];
       await ensure(db.GoiMucTieuAnUong, { idGoiDichVu: plan.idGoiDichVu, idMucTieuAnUong: goal.idMucTieuAnUong });
-      await ensure(db.AuthIdentity, { provider: 'data_seed', subject: `identity-${pad(i + 1)}` }, { idNguoiDung: user.idNguoiDung });
       await ensure(db.AuthChallenge, { id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}` }, { kind: 'DEMO', subject: user.email, payload: { marker: MARKER, index: i + 1 }, expiresAt: new Date('2025-01-01T00:00:00Z'), consumed: true, attempts: i % 3 });
       await ensure(db.YeuThich, { idNguoiDung: user.idNguoiDung, idMonAn: recipe.idMonAn });
       await ensure(db.DanhGia, { idNguoiDung: user.idNguoiDung, idMonAn: recipe.idMonAn }, { soSao: 3 + (i % 3), noiDung: `${MARKER}: đánh giá khác nhau cho công thức ${pad(i + 1)}.`, trangThai: 1 });

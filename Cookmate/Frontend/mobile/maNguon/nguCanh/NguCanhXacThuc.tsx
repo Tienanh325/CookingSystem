@@ -102,7 +102,6 @@ export function NhaCungCapXacThuc({ children }) {
         datNguoiDung,
         dangTai,
         xacThucTaiKhoan,
-        nhanPhienDangNhap,
         dangXuat,
         xoaPhien,
         loiPhien,
