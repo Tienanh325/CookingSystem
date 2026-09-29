@@ -122,7 +122,7 @@ const AuthController = {
     });
 
     await guiThuXacMinh(userWithRole);
-    return sendSuccess(res, 201, 'Đăng ký thành công. Hãy kiểm tra email để xác minh.', {
+    return sendSuccess(res, 201, 'Đăng ký thành công. Hãy nhập mã 6 số đã gửi tới email.', {
       email: userWithRole.email,
       canDangNhap: false,
     });
@@ -163,7 +163,7 @@ const AuthController = {
       !user.emailDaXacMinh &&
       !ADMIN_ROLES.includes(String(user.vaiTro?.tenVaiTro || '').toUpperCase())
     ) {
-      return sendError(res, 403, 'Email chưa được xác minh. Hãy kiểm tra hộp thư của bạn.');
+      return sendError(res, 403, 'Email chưa được xác minh. Hãy nhập mã 6 số đã gửi cho bạn.');
     }
 
     return sendSuccess(res, 200, 'Login successfully', buildAuthPayload(user));
@@ -248,11 +248,11 @@ const AuthController = {
     return sendSuccess(
       res,
       200,
-      'Nếu email hợp lệ và chưa xác minh, Cookmate đã gửi một liên kết mới.',
+      'Nếu email hợp lệ và chưa xác minh, Cookmate đã gửi một mã 6 số mới.',
     );
   }),
   verifyEmail: asyncHandler(async (req, res) => {
-    await xacMinhEmail(req.body.token);
+    await xacMinhEmail(req.body.email, req.body.maXacMinh);
     return sendSuccess(res, 200, 'Email đã được xác minh. Bạn có thể đăng nhập.');
   }),
   forgotPassword: asyncHandler(async (req, res) => {

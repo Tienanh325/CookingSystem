@@ -34,4 +34,4 @@ Nguyên nhân gốc đã xác nhận: SMTP chưa được cấu hình và fallba
 - Chỉ cho phép bản xem trước terminal khi bật cờ rõ ràng.
 - Trả lỗi 503 có thể hiển thị cho ứng dụng nếu dịch vụ email chưa sẵn sàng.
 - Thêm cấu hình mẫu Gmail và lệnh kiểm tra SMTP.
-
+- Theo yêu cầu cập nhật, email xác minh chỉ chứa mã OTP 6 số thay vì liên kết deep link.

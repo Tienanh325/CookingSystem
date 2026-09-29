@@ -83,8 +83,11 @@ before(async () => {
     assert.equal(r.status, 201);
     assert.equal(r.data.token, undefined);
     const thu = hopThuKiemThu.findLast((item) => item.den === email && item.loai === 'EMAIL_VERIFY');
-    assert.ok(thu?.token);
-    assert.equal((await request('POST', '/auth/verify-email', { token: thu.token })).status, 200);
+    assert.match(thu?.maXacMinh, /^\d{6}$/);
+    assert.equal(
+      (await request('POST', '/auth/verify-email', { email, maXacMinh: thu.maXacMinh })).status,
+      200,
+    );
     if (email.startsWith('user')) user = await login(email);
     else other = await login(email);
   }
@@ -107,7 +110,7 @@ test('retired phone OTP endpoints are unavailable', async () => {
   assert.equal((await request('POST', '/auth/otp/request', { phone: '0912345678' })).status, 404);
   assert.equal((await request('POST', '/auth/otp/verify', { challengeId: crypto.randomUUID(), code: '123456' })).status, 404);
 });
-test('email verification and password reset use expiring one-time tokens', async () => {
+test('email verification uses a six-digit code and password reset uses a one-time token', async () => {
   const email = 'recovery@test.local';
   const registered = await request('POST', '/auth/register', {
     hoTen: 'Recovery User',
@@ -118,19 +121,43 @@ test('email verification and password reset use expiring one-time tokens', async
   assert.equal(registered.data.token, undefined);
   assert.equal((await request('POST', '/auth/login', { email, matKhau: 'Original123!' })).status, 403);
   assert.equal(
-    (await request('POST', '/auth/verify-email', { token: '0'.repeat(64) })).status,
+    (await request('POST', '/auth/verify-email', { email, maXacMinh: '000000' })).status,
     400,
+  );
+  const verifyMailDau = hopThuKiemThu.findLast(
+    (item) => item.den === email && item.loai === 'EMAIL_VERIFY',
+  );
+  assert.match(verifyMailDau.maXacMinh, /^\d{6}$/);
+  assert.doesNotMatch(verifyMailDau.vanBan, /https?:\/\/|cookmate:\/\//);
+  assert.equal(
+    (await request('POST', '/auth/resend-verification', { email })).status,
+    200,
   );
   const verifyMail = hopThuKiemThu.findLast(
     (item) => item.den === email && item.loai === 'EMAIL_VERIFY',
   );
-  assert.match(verifyMail.duongDan, /^cookmate:\/\/xac-minh-email\?token=/);
+  assert.match(verifyMail.maXacMinh, /^\d{6}$/);
+  assert.notEqual(verifyMail.maXacMinh, verifyMailDau.maXacMinh);
+  await assert.rejects(
+    require('../src/services/xacThucEmail').xacMinhEmail(email, verifyMailDau.maXacMinh),
+    /không đúng hoặc đã hết hạn/,
+  );
   assert.equal(
-    (await request('POST', '/auth/verify-email', { token: verifyMail.token })).status,
+    (
+      await request('POST', '/auth/verify-email', {
+        email,
+        maXacMinh: verifyMail.maXacMinh,
+      })
+    ).status,
     200,
   );
   assert.equal(
-    (await request('POST', '/auth/verify-email', { token: verifyMail.token })).status,
+    (
+      await request('POST', '/auth/verify-email', {
+        email,
+        maXacMinh: verifyMail.maXacMinh,
+      })
+    ).status,
     400,
   );
   const session = await login(email, 'Original123!');

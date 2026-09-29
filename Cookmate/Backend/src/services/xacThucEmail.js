@@ -10,6 +10,7 @@ const XAC_MINH_EMAIL = 'EMAIL_VERIFY';
 const DAT_LAI_MAT_KHAU = 'PASSWORD_RESET';
 const bam = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const taoToken = () => crypto.randomBytes(32).toString('hex');
+const taoMaSauSo = () => crypto.randomInt(0, 1000000).toString().padStart(6, '0');
 const maHoaHtml = (value) =>
   String(value || '').replace(/[&<>"']/g, (kyTu) => ({
     '&': '&amp;',
@@ -38,18 +39,50 @@ const taoThuThach = async (loai, nguoiDung, soPhut) => {
 };
 
 const guiThuXacMinh = async (nguoiDung) => {
-  const token = await taoThuThach(
-    XAC_MINH_EMAIL,
-    nguoiDung,
-    Number(process.env.EMAIL_VERIFY_EXPIRES_MINUTES || 1440),
-  );
-  const duongDan = taoDuongDan('xac-minh-email', token);
+  const soPhut = Number(process.env.EMAIL_VERIFY_EXPIRES_MINUTES || 10);
+  let maXacMinh;
+  const email = String(nguoiDung.email).trim().toLowerCase();
+
+  await sequelize.transaction(async (transaction) => {
+    const cacMaCu = await db.AuthChallenge.findAll({
+      where: {
+        kind: XAC_MINH_EMAIL,
+        consumed: false,
+        expiresAt: { [Op.gt]: new Date() },
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    const cacMaNguoiDung = cacMaCu.filter(
+      (item) => item.payload.idNguoiDung === nguoiDung.idNguoiDung,
+    );
+    const chuDeCu = new Set(cacMaNguoiDung.map((item) => item.subject));
+    do maXacMinh = taoMaSauSo();
+    while (chuDeCu.has(bam(`${email}:${maXacMinh}`)));
+    const ids = cacMaNguoiDung.map((item) => item.id);
+    if (ids.length)
+      await db.AuthChallenge.update(
+        { consumed: true },
+        { where: { id: { [Op.in]: ids } }, transaction },
+      );
+    await db.AuthChallenge.create(
+      {
+        id: crypto.randomUUID(),
+        kind: XAC_MINH_EMAIL,
+        subject: bam(`${email}:${maXacMinh}`),
+        payload: { idNguoiDung: nguoiDung.idNguoiDung, email },
+        expiresAt: new Date(Date.now() + soPhut * 60 * 1000),
+      },
+      { transaction },
+    );
+  });
+
   await guiEmail({
-    den: nguoiDung.email,
-    tieuDe: 'Xác minh email Cookmate',
-    vanBan: `Xin chào ${nguoiDung.hoTen}. Xác minh email tại: ${duongDan}`,
-    html: `<p>Xin chào <strong>${maHoaHtml(nguoiDung.hoTen)}</strong>,</p><p>Nhấn vào liên kết để xác minh email Cookmate:</p><p><a href="${duongDan}">Xác minh email</a></p>`,
-    thongTinKiemThu: { loai: XAC_MINH_EMAIL, token, duongDan },
+    den: email,
+    tieuDe: `Mã xác minh Cookmate: ${maXacMinh}`,
+    vanBan: `Xin chào ${nguoiDung.hoTen}. Mã xác minh Cookmate của bạn là ${maXacMinh}. Mã có hiệu lực trong ${soPhut} phút.`,
+    html: `<p>Xin chào <strong>${maHoaHtml(nguoiDung.hoTen)}</strong>,</p><p>Mã xác minh Cookmate của bạn là:</p><p style="font-size:32px;font-weight:700;letter-spacing:8px">${maXacMinh}</p><p>Mã có hiệu lực trong ${soPhut} phút. Không chia sẻ mã này với người khác.</p>`,
+    thongTinKiemThu: { loai: XAC_MINH_EMAIL, maXacMinh },
   });
 };
 
@@ -84,14 +117,33 @@ const layThuThach = async (loai, token, transaction) => {
   return thuThach;
 };
 
-const xacMinhEmail = async (token) =>
+const xacMinhEmail = async (email, maXacMinh) =>
   sequelize.transaction(async (transaction) => {
-    const thuThach = await layThuThach(XAC_MINH_EMAIL, token, transaction);
+    const emailChuan = String(email || '').trim().toLowerCase();
+    if (!/^\d{6}$/.test(String(maXacMinh || '')))
+      throw httpError(400, 'Mã xác minh phải gồm 6 chữ số.');
+    const thuThach = await db.AuthChallenge.findOne({
+      where: {
+        kind: XAC_MINH_EMAIL,
+        subject: bam(`${emailChuan}:${maXacMinh}`),
+        consumed: false,
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!thuThach || new Date(thuThach.expiresAt).getTime() <= Date.now()) {
+      if (thuThach) await thuThach.update({ consumed: true }, { transaction });
+      throw httpError(400, 'Mã xác minh không đúng hoặc đã hết hạn.');
+    }
     const nguoiDung = await db.NguoiDung.findByPk(thuThach.payload.idNguoiDung, {
       transaction,
       lock: transaction.LOCK.UPDATE,
     });
-    if (!nguoiDung || nguoiDung.email !== thuThach.payload.email)
+    if (
+      !nguoiDung ||
+      String(nguoiDung.email).toLowerCase() !== emailChuan ||
+      thuThach.payload.email !== emailChuan
+    )
       throw httpError(400, 'Email của tài khoản đã thay đổi.');
     await nguoiDung.update(
       { emailDaXacMinh: 1, thoiGianXacMinhEmail: new Date(), ngayCapNhat: new Date() },

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Text, View } from 'react-native'
 import { DauTrang, ManHinh, Nut, ThongDiep, TruongNhap } from '../thanhPhan/GiaoDien'
 import { goiApi } from '../dichVu/KetNoiApi'
@@ -9,33 +9,35 @@ export default function KhoiPhucTaiKhoan({ navigation, route }: any) {
   const laDatLai = route.name === 'DatLaiMatKhau'
   const [email, datEmail] = useState(route.params?.email || '')
   const [token, datToken] = useState(route.params?.token || '')
+  const [maXacMinh, datMaXacMinh] = useState('')
   const [matKhau, datMatKhau] = useState('')
   const [xacNhan, datXacNhan] = useState('')
   const [dangXuLy, datDangXuLy] = useState(false)
   const [loi, datLoi] = useState('')
   const [thanhCong, datThanhCong] = useState('')
+  const [daXacMinh, datDaXacMinh] = useState(false)
 
   const gui = async () => {
     datLoi('')
     datThanhCong('')
+    const emailChuan = email.trim().toLowerCase()
+    if (laXacMinh && (!emailChuan || !/^\d{6}$/.test(maXacMinh))) {
+      datLoi('Vui lòng nhập email và mã xác minh gồm 6 chữ số.')
+      return
+    }
     if (laDatLai && matKhau !== xacNhan) {
       datLoi('Mật khẩu xác nhận chưa khớp.')
       return
     }
     datDangXuLy(true)
     try {
-      if (laXacMinh && token) {
+      if (laXacMinh) {
         const ketQua = await goiApi('/auth/verify-email', {
           method: 'POST',
-          body: { token },
+          body: { email: emailChuan, maXacMinh },
         })
         datThanhCong(ketQua.message)
-      } else if (laXacMinh) {
-        const ketQua = await goiApi('/auth/resend-verification', {
-          method: 'POST',
-          body: { email: email.trim().toLowerCase() },
-        })
-        datThanhCong(ketQua.message)
+        datDaXacMinh(true)
       } else if (laDatLai) {
         const ketQua = await goiApi('/auth/reset-password', {
           method: 'POST',
@@ -56,9 +58,28 @@ export default function KhoiPhucTaiKhoan({ navigation, route }: any) {
     }
   }
 
-  useEffect(() => {
-    if (laXacMinh && token) gui()
-  }, [])
+  const guiLaiMa = async () => {
+    datLoi('')
+    datThanhCong('')
+    const emailChuan = email.trim().toLowerCase()
+    if (!emailChuan) {
+      datLoi('Vui lòng nhập địa chỉ email.')
+      return
+    }
+    datDangXuLy(true)
+    try {
+      const ketQua = await goiApi('/auth/resend-verification', {
+        method: 'POST',
+        body: { email: emailChuan },
+      })
+      datThanhCong(ketQua.message)
+      datMaXacMinh('')
+    } catch (e: any) {
+      datLoi(e.message)
+    } finally {
+      datDangXuLy(false)
+    }
+  }
 
   const tieuDe = laXacMinh
     ? 'Xác minh email'
@@ -71,12 +92,12 @@ export default function KhoiPhucTaiKhoan({ navigation, route }: any) {
       <Text style={[s.title, s.serif, { marginBottom: 10 }]}>{tieuDe}</Text>
       <Text style={[s.muted, { marginBottom: 24 }]}>
         {laXacMinh
-          ? 'Xác minh địa chỉ email để bảo vệ tài khoản Cookmate của bạn.'
+          ? 'Nhập mã 6 số Cookmate đã gửi tới email của bạn. Mã có hiệu lực trong 10 phút.'
           : laDatLai
             ? 'Tạo mật khẩu mới có ít nhất 8 ký tự.'
             : 'Cookmate sẽ gửi liên kết đặt lại mật khẩu nếu email tồn tại.'}
       </Text>
-      {!laDatLai && !token && (
+      {(laXacMinh || (!laDatLai && !token)) && (
         <TruongNhap
           label="Email"
           value={email}
@@ -84,6 +105,20 @@ export default function KhoiPhucTaiKhoan({ navigation, route }: any) {
           keyboardType="email-address"
           autoCapitalize="none"
           autoComplete="email"
+        />
+      )}
+      {laXacMinh && !daXacMinh && (
+        <TruongNhap
+          label="Mã xác minh"
+          value={maXacMinh}
+          onChangeText={(giaTri: string) => datMaXacMinh(giaTri.replace(/\D/g, '').slice(0, 6))}
+          keyboardType="number-pad"
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          textContentType="oneTimeCode"
+          maxLength={6}
+          placeholder="Nhập 6 chữ số"
+          style={{ fontSize: 24, letterSpacing: 8, textAlign: 'center' }}
         />
       )}
       {laDatLai && !route.params?.token && (
@@ -109,24 +144,30 @@ export default function KhoiPhucTaiKhoan({ navigation, route }: any) {
       )}
       <ThongDiep>{loi}</ThongDiep>
       <ThongDiep success>{thanhCong}</ThongDiep>
-      {!(laXacMinh && token) && !thanhCong && (
+      {laXacMinh && !daXacMinh && (
         <>
           <Nut
-            title={laXacMinh ? 'Gửi lại email xác minh' : laDatLai ? 'Đặt lại mật khẩu' : 'Gửi liên kết'}
+            title="Xác minh email"
             busy={dangXuLy}
             onPress={gui}
           />
-          {laXacMinh && (
-            <Nut
-              title="Tôi đã xác minh, đăng nhập"
-              secondary
-              onPress={() => navigation.replace('DangNhap')}
-              style={{ marginTop: 12 }}
-            />
-          )}
+          <Nut
+            title="Gửi lại mã"
+            secondary
+            busy={dangXuLy}
+            onPress={guiLaiMa}
+            style={{ marginTop: 12 }}
+          />
         </>
       )}
-      {!!thanhCong && (
+      {!laXacMinh && !thanhCong && (
+        <Nut
+          title={laDatLai ? 'Đặt lại mật khẩu' : 'Gửi liên kết'}
+          busy={dangXuLy}
+          onPress={gui}
+        />
+      )}
+      {((laXacMinh && daXacMinh) || (!laXacMinh && !!thanhCong)) && (
         <View style={{ marginTop: 8 }}>
           <Nut title="Đến trang đăng nhập" onPress={() => navigation.replace('DangNhap')} />
         </View>

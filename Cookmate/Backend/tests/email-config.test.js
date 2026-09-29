@@ -29,9 +29,9 @@ test('chỉ dùng bản xem trước terminal khi được bật rõ ràng', asy
   process.env.EMAIL_DEV_PREVIEW = 'true';
   const ketQua = await guiEmail({
     den: 'user@example.com',
-    tieuDe: 'Kiểm thử',
-    vanBan: 'Liên kết kiểm thử',
-    html: '<p>Liên kết kiểm thử</p>',
+    tieuDe: 'Mã xác minh Cookmate: 123456',
+    vanBan: 'Mã xác minh của bạn là 123456.',
+    html: '<p>Mã xác minh của bạn là <strong>123456</strong>.</p>',
   });
   assert.equal(ketQua.development, true);
 });
