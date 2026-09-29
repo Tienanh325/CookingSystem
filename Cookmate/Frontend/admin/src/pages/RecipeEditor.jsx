@@ -79,6 +79,18 @@ export default function RecipeEditor() {
       ...f,
       [key]: f[key].map((row, n) => (n === index ? { ...row, [field]: value } : row)),
     }))
+  const selectIngredient = (index, value) => {
+    const idNguyenLieu = Number(value)
+    const ingredient = ingredients.find((item) => item.idNguyenLieu === idNguyenLieu)
+    setForm((f) => ({
+      ...f,
+      nguyenLieus: f.nguyenLieus.map((row, n) =>
+        n === index
+          ? { ...row, idNguyenLieu, donVi: ingredient?.donViMacDinh || 'g' }
+          : row,
+      ),
+    }))
+  }
   async function upload(e) {
     const file = e.target.files[0]
     if (!file) return
@@ -218,7 +230,7 @@ export default function RecipeEditor() {
                   onClick={() =>
                     update('nguyenLieus', [
                       ...form.nguyenLieus,
-                      { idNguyenLieu: '', soLuong: 1, donVi: 'g', khoiLuongGram: 1 },
+                      { idNguyenLieu: '', soLuong: 1, donVi: '', khoiLuongGram: '' },
                     ])
                   }
                 >
@@ -237,9 +249,7 @@ export default function RecipeEditor() {
                     aria-label={`Nguyên liệu ${i + 1}`}
                     required
                     value={row.idNguyenLieu}
-                    onChange={(e) =>
-                      updateRow('nguyenLieus', i, 'idNguyenLieu', Number(e.target.value))
-                    }
+                    onChange={(e) => selectIngredient(i, e.target.value)}
                   >
                     <option value="">Chọn nguyên liệu</option>
                     {ingredients.map((x) => (

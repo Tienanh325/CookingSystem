@@ -33,6 +33,21 @@ const ingredientNames = [
   'Hạt điều', 'Hạnh nhân', 'Dầu ô liu', 'Nước tương', 'Nước mắm', 'Mật ong', 'Bún gạo',
   'Mì nguyên cám', 'Tôm', 'Mực',
 ];
+// Đơn vị hiển thị theo cách đo phổ biến trong bếp. gramsPerUnit chỉ dùng để
+// giữ khối lượng quy đổi phục vụ tính dinh dưỡng, không hiển thị thay đơn vị.
+const ingredientMeasures = [
+  ['g', 1], ['g', 1], ['g', 1], ['g', 1], ['g', 1], ['quả', 55], ['miếng', 100], ['g', 1],
+  ['g', 1], ['g', 1], ['g', 1], ['củ', 150], ['củ', 150], ['g', 1], ['củ', 100], ['quả', 100],
+  ['cây', 300], ['bó', 300], ['cây', 100], ['bó', 300], ['cây', 300], ['quả', 150], ['quả', 150],
+  ['g', 1], ['cây', 80], ['bắp', 200], ['củ', 150], ['bó', 100], ['tép', 5], ['củ', 100], ['cây', 40],
+  ['quả', 80], ['quả', 200], ['quả', 120], ['quả', 180], ['quả', 200], ['hũ', 100], ['ml', 1],
+  ['lát', 20], ['g', 1], ['g', 1], ['g', 1], ['ml', 1], ['ml', 1], ['ml', 1], ['ml', 1], ['g', 1],
+  ['g', 1], ['con', 25], ['con', 250],
+].map(([unit, gramsPerUnit]) => ({ unit, gramsPerUnit }));
+const quantityFromGrams = (grams, gramsPerUnit) => {
+  if (gramsPerUnit === 1) return grams;
+  return Math.max(0.5, Math.round((grams / gramsPerUnit) * 2) / 2);
+};
 const recipeNames = [
   'Cơm gạo lứt ức gà', 'Cá hồi áp chảo', 'Bò xào ớt chuông', 'Heo nạc kho gừng',
   'Trứng cuộn rau củ', 'Đậu hũ sốt cà', 'Cháo đậu xanh', 'Salad đậu đỏ', 'Chè đậu đen ít ngọt',
@@ -54,6 +69,7 @@ async function seedLarge() {
   if (process.env.NODE_ENV === 'production') throw new Error('Large seed is for development only.');
   assert.equal(categoryNames.length, SIZE);
   assert.equal(ingredientNames.length, SIZE);
+  assert.equal(ingredientMeasures.length, SIZE);
   assert.equal(recipeNames.length, SIZE);
   for (const image of recipeImages.slice(10)) {
     await fs.access(path.join(__dirname, '../uploads/mon-an', image.filename));
@@ -85,12 +101,15 @@ async function seedLarge() {
     const ingredients = [];
     for (let i = 0; i < SIZE; i++) {
       categories.push(await ensure(db.DanhMuc, { tenDanhMuc: `${categoryNames[i]} · Dữ liệu ${pad(i + 1)}` }, { moTa: `${MARKER}: nhóm ${categoryNames[i].toLowerCase()} dùng cho dữ liệu phong phú.`, trangThai: 1 }));
-      ingredients.push(await ensure(db.NguyenLieu, { tenNguyenLieu: `${ingredientNames[i]} · Mẫu ${pad(i + 1)}` }, {
-        donViMacDinh: 'g', moTa: `${MARKER}: thông tin dinh dưỡng tham khảo trên 100 g.`,
+      const ingredient = await ensure(db.NguyenLieu, { tenNguyenLieu: `${ingredientNames[i]} · Mẫu ${pad(i + 1)}` }, {
+        donViMacDinh: ingredientMeasures[i].unit, moTa: `${MARKER}: thông tin dinh dưỡng tham khảo trên 100 g.`,
         nangLuongKcal: 35 + (i * 17) % 330, proteinG: 1 + (i * 1.7) % 28,
         carbG: 2 + (i * 2.3) % 65, chatBeoG: 0.2 + (i * 0.7) % 18,
         chatXoG: 0.5 + (i * 0.4) % 12, natriMg: 2 + (i * 19) % 600, trangThai: 1,
-      }));
+      });
+      // Cập nhật cả dữ liệu đã seed trước đây khi chạy lại script.
+      await ingredient.update({ donViMacDinh: ingredientMeasures[i].unit }, { transaction });
+      ingredients.push(ingredient);
     }
 
     const recipes = [];
@@ -119,9 +138,29 @@ async function seedLarge() {
       }
       recipes.push(recipe);
       const ingredient = ingredients[i];
-      await ensure(db.MonAnNguyenLieu, { idMonAn: recipe.idMonAn, idNguyenLieu: ingredient.idNguyenLieu }, { soLuong: 120 + i * 2, donVi: 'g', khoiLuongGram: 120 + i * 2, ghiChu: 'Cân sau khi sơ chế.' });
-      const secondIngredient = ingredients[(i + 7) % SIZE];
-      await ensure(db.MonAnNguyenLieu, { idMonAn: recipe.idMonAn, idNguyenLieu: secondIngredient.idNguyenLieu }, { soLuong: 40 + i, donVi: 'g', khoiLuongGram: 40 + i, ghiChu: 'Điều chỉnh theo khẩu vị.' });
+      const ingredientGrams = 120 + i * 2;
+      const ingredientMeasure = ingredientMeasures[i];
+      const recipeIngredient = await ensure(db.MonAnNguyenLieu, { idMonAn: recipe.idMonAn, idNguyenLieu: ingredient.idNguyenLieu }, {
+        soLuong: quantityFromGrams(ingredientGrams, ingredientMeasure.gramsPerUnit), donVi: ingredientMeasure.unit,
+        khoiLuongGram: ingredientGrams, ghiChu: 'Cân sau khi sơ chế.',
+      });
+      await recipeIngredient.update({
+        soLuong: quantityFromGrams(ingredientGrams, ingredientMeasure.gramsPerUnit),
+        donVi: ingredientMeasure.unit, khoiLuongGram: ingredientGrams,
+      }, { transaction });
+
+      const secondIndex = (i + 7) % SIZE;
+      const secondIngredient = ingredients[secondIndex];
+      const secondIngredientGrams = 40 + i;
+      const secondIngredientMeasure = ingredientMeasures[secondIndex];
+      const secondRecipeIngredient = await ensure(db.MonAnNguyenLieu, { idMonAn: recipe.idMonAn, idNguyenLieu: secondIngredient.idNguyenLieu }, {
+        soLuong: quantityFromGrams(secondIngredientGrams, secondIngredientMeasure.gramsPerUnit), donVi: secondIngredientMeasure.unit,
+        khoiLuongGram: secondIngredientGrams, ghiChu: 'Điều chỉnh theo khẩu vị.',
+      });
+      await secondRecipeIngredient.update({
+        soLuong: quantityFromGrams(secondIngredientGrams, secondIngredientMeasure.gramsPerUnit),
+        donVi: secondIngredientMeasure.unit, khoiLuongGram: secondIngredientGrams,
+      }, { transaction });
       let firstStep;
       for (let j = 1; j <= 3; j++) {
         const step = await ensure(db.BuocNau, { idMonAn: recipe.idMonAn, phienBan: 1, soThuTu: j }, {
