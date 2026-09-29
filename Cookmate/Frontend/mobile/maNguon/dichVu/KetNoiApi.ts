@@ -1,6 +1,26 @@
 import { Platform } from 'react-native'
 const cauHinh = process.env.EXPO_PUBLIC_API_URL
-const DIA_CHI_GOC = (cauHinh || (Platform.OS === 'web' ? '/api' : '')).replace(/\/$/, '')
+const laDiaChiNoiBo = (hostname: string) =>
+  hostname === 'localhost' ||
+  hostname === '127.0.0.1' ||
+  /^10\./.test(hostname) ||
+  /^192\.168\./.test(hostname) ||
+  /^172\.(1[6-9]|2\d|3[01])\./.test(hostname)
+
+const diaChiWebNoiBo = () => {
+  if (Platform.OS !== 'web' || typeof window === 'undefined' || !laDiaChiNoiBo(window.location.hostname))
+    return ''
+  if (cauHinh) {
+    try {
+      const url = new URL(cauHinh)
+      url.hostname = window.location.hostname
+      return url.toString()
+    } catch {}
+  }
+  return `${window.location.protocol}//${window.location.hostname}:8080/api`
+}
+
+const DIA_CHI_GOC = (diaChiWebNoiBo() || cauHinh || (Platform.OS === 'web' ? '/api' : '')).replace(/\/$/, '')
 let token = null,
   unauthorized = null
 export const datMaTruyCap = (value) => {

@@ -1,6 +1,26 @@
 import { Platform } from 'react-native'
 const configured = process.env.EXPO_PUBLIC_API_URL
-const BASE = (configured || (Platform.OS === 'web' ? '/api' : '')).replace(/\/$/, '')
+const isLocalAddress = (hostname) =>
+  hostname === 'localhost' ||
+  hostname === '127.0.0.1' ||
+  /^10\./.test(hostname) ||
+  /^192\.168\./.test(hostname) ||
+  /^172\.(1[6-9]|2\d|3[01])\./.test(hostname)
+
+const localWebApi = () => {
+  if (Platform.OS !== 'web' || typeof window === 'undefined' || !isLocalAddress(window.location.hostname))
+    return ''
+  if (configured) {
+    try {
+      const url = new URL(configured)
+      url.hostname = window.location.hostname
+      return url.toString()
+    } catch {}
+  }
+  return `${window.location.protocol}//${window.location.hostname}:8080/api`
+}
+
+const BASE = (localWebApi() || configured || (Platform.OS === 'web' ? '/api' : '')).replace(/\/$/, '')
 let token = null,
   unauthorized = null
 export const setToken = (value) => {

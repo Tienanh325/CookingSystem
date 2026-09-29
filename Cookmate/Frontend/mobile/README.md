@@ -13,7 +13,7 @@ npm start
 
 - Điện thoại thật cùng Wi-Fi: `http://IP_LAN_CUA_MAY:8080/api`.
 - Android Emulator: `http://10.0.2.2:8080/api`.
-- Trình duyệt trên máy phát triển: `http://localhost:8080/api`.
+- Trình duyệt trên máy phát triển tự dùng hostname đang mở và cổng backend `8080`, nên không cần sửa IP khi đổi Wi-Fi/hotspot.
 
 Đặt `EXPO_PUBLIC_EAS_PROJECT_ID` bằng Project ID trong Expo/EAS để nhận push notification trên bản cài Android/iOS. Remote push không hoạt động trên Expo web hoặc Expo Go của SDK 53 trở lên; cần development build hoặc bản release có credential FCM/APNs.
 
