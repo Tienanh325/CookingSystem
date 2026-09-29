@@ -43,7 +43,9 @@ const errorHandler = (error, req, res, next) => {
   return sendError(
     res,
     status,
-    status >= 500 ? 'Máy chủ đang gặp sự cố. Vui lòng thử lại.' : error.message,
+    status >= 500 && error.expose !== true
+      ? 'Máy chủ đang gặp sự cố. Vui lòng thử lại.'
+      : error.message,
   );
 };
 

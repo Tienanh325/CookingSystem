@@ -4,7 +4,7 @@ const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 const db = require('../models');
 const httpError = require('../utils/httpError');
-const { guiEmail } = require('./guiEmail');
+const { damBaoEmailSanSang, guiEmail } = require('./guiEmail');
 
 const XAC_MINH_EMAIL = 'EMAIL_VERIFY';
 const DAT_LAI_MAT_KHAU = 'PASSWORD_RESET';
@@ -145,6 +145,7 @@ const datLaiMatKhau = async (token, matKhauMoi) =>
 module.exports = {
   DAT_LAI_MAT_KHAU,
   XAC_MINH_EMAIL,
+  damBaoEmailSanSang,
   datLaiMatKhau,
   guiThuDatLaiMatKhau,
   guiThuXacMinh,

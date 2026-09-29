@@ -11,6 +11,7 @@ const { sendError, sendSuccess } = require('../utils/apiResponse');
 const { normalizeText } = require('../utils/query');
 const { sanitizeUser } = require('../utils/serializers');
 const {
+  damBaoEmailSanSang,
   datLaiMatKhau,
   guiThuDatLaiMatKhau,
   guiThuXacMinh,
@@ -94,6 +95,8 @@ const AuthController = {
     if (existedUser) {
       return sendError(res, 409, 'Email already exists');
     }
+
+    await damBaoEmailSanSang();
 
     const role = await findOrCreateDefaultRole();
     const hashedPassword = await bcrypt.hash(matKhau, 12);
@@ -239,6 +242,7 @@ const AuthController = {
   }),
   resendVerification: asyncHandler(async (req, res) => {
     const email = normalizeText(req.body.email).toLowerCase();
+    await damBaoEmailSanSang();
     const user = await db.NguoiDung.findOne({ where: { email, trangThai: 1 } });
     if (user && !user.emailDaXacMinh) await guiThuXacMinh(user);
     return sendSuccess(
@@ -253,6 +257,7 @@ const AuthController = {
   }),
   forgotPassword: asyncHandler(async (req, res) => {
     const email = normalizeText(req.body.email).toLowerCase();
+    await damBaoEmailSanSang();
     const user = await db.NguoiDung.findOne({ where: { email, trangThai: 1 } });
     if (user?.matKhau) await guiThuDatLaiMatKhau(user);
     return sendSuccess(

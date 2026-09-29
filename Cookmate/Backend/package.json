@@ -12,6 +12,7 @@
     "verify:demo": "node scripts/verify-demo.js",
     "seed:large": "node scripts/seed-large.js",
     "verify:large": "node scripts/verify-large.js",
+    "email:verify": "node scripts/verify-email.js",
     "images:recipes": "node scripts/download-recipe-images.js",
     "images:review": "node scripts/review-recipe-images.js",
     "videos:search": "node scripts/search-recipe-videos.js",
