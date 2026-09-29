@@ -28,7 +28,7 @@ npx eas-cli build --profile development --platform android
 
 Sau `eas init`, điền Project ID được cấp vào `.env`. Profile build đã được khai báo trong `eas.json`; không commit file credential dịch vụ vào repository.
 
-Có thể dùng Expo Go để xem các chức năng không phụ thuộc remote push. Để thử push thật, cài development build từ EAS rồi mở bundler bằng `npx expo start --dev-client`. Cho phép kết nối backend qua firewall nếu mạng chặn; đổi IP cần khởi động lại Expo. Không dùng localhost của điện thoại để trỏ về máy tính.
+Có thể dùng Expo Go để xem các chức năng không phụ thuộc native module riêng. Trong Expo Go, tìm kiếm giọng nói sẽ hiện hướng dẫn dùng development build thay vì làm ứng dụng lỗi; remote push cũng không hoạt động. Để thử đầy đủ hai tính năng này, cài development build từ EAS rồi mở bundler bằng `npx expo start --dev-client`. Cho phép kết nối backend qua firewall nếu mạng chặn; đổi IP cần khởi động lại Expo. Không dùng localhost của điện thoại để trỏ về máy tính.
 
 ## Chức năng
 
