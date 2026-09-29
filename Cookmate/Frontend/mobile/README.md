@@ -7,6 +7,9 @@ npm ci
 # Chỉ sao chép nếu chưa có .env
 Copy-Item .env.example .env
 npm start
+
+# Mở trên iPhone bằng Expo Go qua tunnel
+npm run start:go
 ```
 
 Đặt `EXPO_PUBLIC_API_URL` trong `.env` thành URL của máy chạy backend:
