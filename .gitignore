@@ -141,3 +141,19 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Tệp cục bộ không thuộc mã nguồn ứng dụng
+/Anh/
+/skills/
+/tools/
+/__pycache__/
+*.py[cod]
+/BaoCaoMobile_*.docx
+/BaoCaoMobile_*.pdf
+/~$*.docx
+/build_report_doc.py
+/data_ch3_ch4.py
+/test_style.py
+/verify_report.py
+/check_word.ps1
+/verify_word_com.ps1
