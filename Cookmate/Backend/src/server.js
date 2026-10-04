@@ -8,6 +8,7 @@ const sequelize = require('./config/database');
 require('./models');
 
 const PORT = process.env.PORT || 8080;
+const HOST = process.env.HOST || '0.0.0.0';
 
 const startServer = async () => {
   try {
@@ -19,8 +20,8 @@ const startServer = async () => {
     console.log('Model Sequelize đã được nạp!');
     console.log('=================================');
 
-    app.listen(PORT, () => {
-      console.log(`Server đang chạy tại http://localhost:${PORT}`);
+    app.listen(PORT, HOST, () => {
+      console.log(`Server đang lắng nghe tại http://${HOST}:${PORT}`);
     });
   } catch (error) {
     console.error('=================================');

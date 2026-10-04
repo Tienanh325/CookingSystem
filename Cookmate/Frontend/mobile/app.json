@@ -25,10 +25,17 @@
     ],
     "ios": {
       "bundleIdentifier": "com.cookmate.mobile",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "Cookmate cần truy cập máy chủ đang chạy trên máy tính trong cùng mạng nội bộ.",
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        }
+      }
     },
     "android": {
       "package": "com.cookmate.mobile",
+      "usesCleartextTraffic": true,
       "permissions": ["POST_NOTIFICATIONS", "RECORD_AUDIO"]
     },
     "scheme": "cookmate"

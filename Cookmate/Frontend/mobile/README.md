@@ -15,6 +15,7 @@ npm run start:go
 Đặt `EXPO_PUBLIC_API_URL` trong `.env` thành URL của máy chạy backend:
 
 - Điện thoại thật cùng Wi-Fi: `http://IP_LAN_CUA_MAY:8080/api`.
+- Máy tính có thể dùng cáp LAN và điện thoại dùng Wi-Fi; chỉ cần cả hai cùng router và điện thoại không ở mạng khách (Guest). Khi chạy Expo ở chế độ LAN, app tự lấy IP của máy chạy Metro để tránh dùng nhầm IP cũ trong `.env`.
 - Android Emulator: `http://10.0.2.2:8080/api`.
 - Trình duyệt trên máy phát triển tự dùng hostname đang mở và cổng backend `8080`, nên không cần sửa IP khi đổi Wi-Fi/hotspot.
 
