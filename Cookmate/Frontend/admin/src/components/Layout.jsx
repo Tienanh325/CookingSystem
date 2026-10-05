@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom'
 import {
   ChefHat,
@@ -21,6 +21,7 @@ import {
   CreditCard,
 } from 'lucide-react'
 import { useAuth } from '../context/auth'
+import useResource from '../lib/useResource'
 const groups = [
   ['TỔNG QUAN', [['/', 'Bảng điều khiển', LayoutDashboard]]],
   [
@@ -49,7 +50,12 @@ export default function Layout() {
   const { user, logout } = useAuth(),
     [open, setOpen] = useState(false),
     [search, setSearch] = useState(''),
-    navigate = useNavigate()
+    navigate = useNavigate(),
+    unread = useResource('/thong-bao?daDoc=0&limit=1')
+  useEffect(() => {
+    const timer = window.setInterval(unread.reload, 15000)
+    return () => window.clearInterval(timer)
+  }, [unread.reload])
   return (
     <div className="admin-layout">
       {open && (
@@ -119,8 +125,9 @@ export default function Layout() {
             />
           </form>
           <div className="topbar-actions">
-            <Link className="icon-button" to="/notifications" aria-label="Thông báo">
+            <Link className="icon-button notification-bell" to="/notifications" aria-label={`Thông báo${unread.meta?.totalItems ? `, ${unread.meta.totalItems} chưa đọc` : ''}`}>
               <Bell size={21} />
+              {!!unread.meta?.totalItems && <span>{Math.min(unread.meta.totalItems, 99)}</span>}
             </Link>
             <span className="divider" />
             <Link className="user-chip" to="/settings">

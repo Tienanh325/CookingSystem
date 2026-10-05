@@ -36,6 +36,14 @@ const GoiDichVuController = {
     const access = await layQuyenNguoiDung(req.auth.idNguoiDung);
     return sendSuccess(res, 200, 'Current entitlements loaded', {
       goiDichVu: toPlan(access.goi),
+      dangKyDichVu: access.dangKyDichVu
+        ? {
+            idDangKyDichVu: access.dangKyDichVu.idDangKyDichVu,
+            thoiGianBatDau: access.dangKyDichVu.thoiGianBatDau,
+            thoiGianKetThuc: access.dangKyDichVu.thoiGianKetThuc,
+            trangThai: access.dangKyDichVu.trangThai,
+          }
+        : null,
       mucTieuAnUongs: access.mucTieuAnUongs,
     });
   }),

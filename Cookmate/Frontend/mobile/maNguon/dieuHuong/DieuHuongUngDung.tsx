@@ -42,6 +42,13 @@ const chuDeDieuHuong = {
   },
 }
 const thamChieuDieuHuong = createNavigationContainerRef<any>()
+function moManHinhTuThongBao(duLieu: any) {
+  if (!thamChieuDieuHuong.isReady()) return
+  const paymentId = String(duLieu?.duongDan || '').match(/[?&]id=(\d+)/)?.[1]
+  if (String(duLieu?.loai || '').startsWith('THANH_TOAN_') && paymentId)
+    thamChieuDieuHuong.navigate('KetQuaThanhToan', { id: Number(paymentId) })
+  else thamChieuDieuHuong.navigate('ThongBao')
+}
 const lienKetSau = {
   prefixes: ['cookmate://'],
   config: {
@@ -90,9 +97,7 @@ export default function DieuHuongUngDung() {
   const { dangTai } = useXacThuc()
   useEffect(
     () =>
-      langNgheMoThongBao(() => {
-        if (thamChieuDieuHuong.isReady()) thamChieuDieuHuong.navigate('ThongBao')
-      }),
+      langNgheMoThongBao(moManHinhTuThongBao),
     [],
   )
   if (dangTai)
@@ -115,7 +120,7 @@ export default function DieuHuongUngDung() {
       linking={lienKetSau}
       onReady={() => {
         layThongBaoDaMoUngDung().then((duLieu) => {
-          if (duLieu && thamChieuDieuHuong.isReady()) thamChieuDieuHuong.navigate('ThongBao')
+          if (duLieu) moManHinhTuThongBao(duLieu)
         }).catch(() => {})
       }}
     >

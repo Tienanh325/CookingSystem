@@ -10,10 +10,6 @@ const dbName = `cookmate_test_${Date.now()}_${crypto.randomBytes(3).toString('he
 process.env.DB_NAME = dbName;
 process.env.JWT_SECRET = crypto.randomBytes(48).toString('hex');
 process.env.NODE_ENV = 'test';
-process.env.VNPAY_TMN_CODE = 'COOKTEST';
-process.env.VNPAY_HASH_SECRET = 'test-vnpay-secret-at-least-32-characters';
-process.env.VNPAY_RETURN_URL = 'https://api.cookmate.test/api/thanh-toan/vnpay/return';
-process.env.VNPAY_APP_RETURN_URL = 'cookmate://thanh-toan';
 let connection,
   sequelize,
   db,
@@ -301,11 +297,12 @@ test('meal calendar supports manual planning, evaluation and Pro automation', as
   assert.equal(shopping.status, 200, JSON.stringify(shopping));
   assert.ok(shopping.data[0].soLuong > 0);
 });
-test('manual payment confirmation activates Chef and individual goals', async () => {
+test('manually reviewed VietQR payments activate Chef and individual goals', async () => {
   const catalog = (await request('GET', '/goi-dich-vu')).data;
   const chef = catalog.goiDichVus.find((item) => item.maGoi === 'CHEF');
-  const chefPayment = await request('POST', '/thanh-toan/yeu-cau', { loaiSanPham: 'GOI_DICH_VU', idGoiDichVu: chef.idGoiDichVu }, user);
+  const chefPayment = await request('POST', '/thanh-toan/vietqr/tao', { loaiSanPham: 'GOI_DICH_VU', idGoiDichVu: chef.idGoiDichVu }, user);
   assert.equal(chefPayment.status, 201, JSON.stringify(chefPayment));
+  assert.equal((await request('PATCH', `/thanh-toan/${chefPayment.data.idYeuCauThanhToan}/da-thanh-toan`, {}, user)).status, 200);
   assert.equal((await request('PATCH', `/admin/thanh-toan/${chefPayment.data.idYeuCauThanhToan}/xac-nhan`, {}, admin)).status, 200);
   assert.equal((await request('GET', '/goi-dich-vu/me', undefined, user)).data.goiDichVu.maGoi, 'CHEF');
   const chefRecipe = await request('GET', `/mon-an/${recipe.idMonAn}`, undefined, user);
@@ -320,54 +317,75 @@ test('manual payment confirmation activates Chef and individual goals', async ()
   assert.equal((await request('POST', '/tu-van-ai', { cauHoi: 'Tư vấn' }, other)).status, 403);
 
   const goal = catalog.mucTieuAnUongs.find((item) => item.maMucTieu === 'VEGETARIAN');
-  const goalPayment = await request('POST', '/thanh-toan/yeu-cau', { loaiSanPham: 'MUC_TIEU', idMucTieuAnUong: goal.idMucTieuAnUong }, other);
+  const goalPayment = await request('POST', '/thanh-toan/vietqr/tao', { loaiSanPham: 'MUC_TIEU', idMucTieuAnUong: goal.idMucTieuAnUong }, other);
   assert.equal(goalPayment.status, 201, JSON.stringify(goalPayment));
+  assert.equal((await request('PATCH', `/thanh-toan/${goalPayment.data.idYeuCauThanhToan}/da-thanh-toan`, {}, other)).status, 200);
   assert.equal((await request('PATCH', `/admin/thanh-toan/${goalPayment.data.idYeuCauThanhToan}/xac-nhan`, {}, admin)).status, 200);
   assert.equal((await request('GET', '/goi-dich-vu/me', undefined, other)).data.mucTieuAnUongs[0].maMucTieu, 'VEGETARIAN');
 });
-test('VNPAY IPN verifies signature and amount before activating access', async () => {
+test('VietQR manual approval notifies admin, supports rejection and expires access', async () => {
   const catalog = (await request('GET', '/goi-dich-vu')).data;
-  const goal = catalog.mucTieuAnUongs.find((item) => item.maMucTieu === 'EAT_HEALTHY');
-  const started = await request('POST', '/thanh-toan/vnpay/tao', {
-    loaiSanPham: 'MUC_TIEU', idMucTieuAnUong: goal.idMucTieuAnUong,
+  const basic = catalog.goiDichVus.find((item) => item.maGoi === 'BASIC');
+  const started = await request('POST', '/thanh-toan/vietqr/tao', {
+    loaiSanPham: 'GOI_DICH_VU', idGoiDichVu: basic.idGoiDichVu,
   }, user);
   assert.equal(started.status, 201, JSON.stringify(started));
-  assert.match(started.data.paymentUrl, /^https:\/\/sandbox\.vnpayment\.vn\//);
-  const paymentUrl = new URL(started.data.paymentUrl);
-  const initial = Object.fromEntries(paymentUrl.searchParams);
-  const vnpay = require('../src/services/vnpay');
-  assert.equal(vnpay.verifyCallback(initial).valid, true);
+  assert.match(started.data.maThamChieu, /^CM BASIC [A-F0-9]{8}$/);
+  const qrUrl = new URL(started.data.qrUrl);
+  assert.equal(qrUrl.origin, 'https://img.vietqr.io');
+  assert.equal(qrUrl.pathname, '/image/TCB-9330302005-print.png');
+  assert.equal(qrUrl.searchParams.get('amount'), '39000');
+  assert.equal(qrUrl.searchParams.get('addInfo'), started.data.maThamChieu);
+  assert.equal(qrUrl.searchParams.get('accountName'), 'DƯƠNG TIẾN ANH');
+  assert.equal(started.data.nguoiThuHuong, 'DƯƠNG TIẾN ANH');
   assert.equal((await request('PATCH', `/admin/thanh-toan/${started.data.idYeuCauThanhToan}/xac-nhan`, {}, admin)).status, 409);
 
-  const callback = {
-    ...initial,
-    vnp_ResponseCode: '00',
-    vnp_TransactionStatus: '00',
-    vnp_TransactionNo: 'TEST123456',
-  };
-  delete callback.vnp_SecureHash;
-  const invalid = new URLSearchParams({ ...callback, vnp_SecureHash: 'invalid' });
-  const invalidResult = await fetch(`${base}/thanh-toan/vnpay/ipn?${invalid}`).then((response) => response.json());
-  assert.equal(invalidResult.RspCode, '97');
+  const adminAccount = await db.NguoiDung.findOne({ where: { email: 'admin@test.local' } });
+  const adminNotificationCount = await db.ThongBaoNguoiDung.count({
+    where: { idNguoiDung: adminAccount.idNguoiDung },
+  });
+  const submitted = await request('PATCH', `/thanh-toan/${started.data.idYeuCauThanhToan}/da-thanh-toan`, {}, user);
+  assert.equal(submitted.status, 200, JSON.stringify(submitted));
+  assert.equal(submitted.data.trangThai, 'CHO_XAC_NHAN');
+  assert.ok(submitted.data.ngayKhachXacNhan);
+  assert.equal(await db.ThongBaoNguoiDung.count({ where: { idNguoiDung: adminAccount.idNguoiDung } }), adminNotificationCount + 1);
+  const adminNotification = await db.ThongBao.findOne({ where: { loai: 'YEU_CAU_THANH_TOAN' }, order: [['idThongBao', 'DESC']] });
+  assert.equal(adminNotification.duongDan, `/payments?payment=${started.data.idYeuCauThanhToan}`);
+  assert.equal((await request('PATCH', `/thanh-toan/${started.data.idYeuCauThanhToan}/da-thanh-toan`, {}, user)).status, 200);
+  assert.equal(await db.ThongBaoNguoiDung.count({ where: { idNguoiDung: adminAccount.idNguoiDung } }), adminNotificationCount + 1);
 
-  const wrongAmount = { ...callback, vnp_Amount: String(Number(callback.vnp_Amount) + 100) };
-  wrongAmount.vnp_SecureHash = vnpay.sign(wrongAmount, process.env.VNPAY_HASH_SECRET);
-  const amountResult = await fetch(`${base}/thanh-toan/vnpay/ipn?${new URLSearchParams(wrongAmount)}`).then((response) => response.json());
-  assert.equal(amountResult.RspCode, '04');
-
-  callback.vnp_SecureHash = vnpay.sign(callback, process.env.VNPAY_HASH_SECRET);
-  const callbackQuery = new URLSearchParams(callback);
-  const accepted = await fetch(`${base}/thanh-toan/vnpay/ipn?${callbackQuery}`).then((response) => response.json());
-  assert.equal(accepted.RspCode, '00');
+  const userNotificationCount = await db.ThongBaoNguoiDung.count({ where: { idNguoiDung: (await request('GET', '/auth/me', undefined, user)).data.idNguoiDung } });
+  const accepted = await request('PATCH', `/admin/thanh-toan/${started.data.idYeuCauThanhToan}/xac-nhan`, {}, admin);
+  assert.equal(accepted.status, 200, JSON.stringify(accepted));
   const payment = await request('GET', `/thanh-toan/${started.data.idYeuCauThanhToan}`, undefined, user);
   assert.equal(payment.data.trangThai, 'DA_THANH_TOAN');
-  assert.equal(payment.data.maGiaoDichNhaCungCap, 'TEST123456');
-  const repeated = await fetch(`${base}/thanh-toan/vnpay/ipn?${callbackQuery}`).then((response) => response.json());
-  assert.equal(repeated.RspCode, '02');
+  assert.ok(new Date(payment.data.quyenHetHanLuc).getTime() > Date.now() + 29 * 86400000);
+  assert.equal((await request('GET', '/goi-dich-vu/me', undefined, user)).data.goiDichVu.maGoi, 'BASIC');
+  assert.equal(await db.ThongBaoNguoiDung.count({ where: { idNguoiDung: (await request('GET', '/auth/me', undefined, user)).data.idNguoiDung } }), userNotificationCount + 1);
 
-  const returned = await fetch(`${base}/thanh-toan/vnpay/return?${callbackQuery}`, { redirect: 'manual' });
-  assert.equal(returned.status, 302);
-  assert.match(returned.headers.get('location'), /^cookmate:\/\/thanh-toan\?/);
+  const rejectedGoal = catalog.mucTieuAnUongs.find((item) => item.maMucTieu === 'EAT_HEALTHY');
+  const rejected = await request('POST', '/thanh-toan/vietqr/tao', {
+    loaiSanPham: 'MUC_TIEU', idMucTieuAnUong: rejectedGoal.idMucTieuAnUong,
+  }, other);
+  await request('PATCH', `/thanh-toan/${rejected.data.idYeuCauThanhToan}/da-thanh-toan`, {}, other);
+  const rejectedResponse = await request('PATCH', `/admin/thanh-toan/${rejected.data.idYeuCauThanhToan}/tu-choi`, {}, admin);
+  assert.equal(rejectedResponse.status, 200, JSON.stringify(rejectedResponse));
+  const rejectedDetail = await request('GET', `/thanh-toan/${rejected.data.idYeuCauThanhToan}`, undefined, other);
+  assert.equal(rejectedDetail.data.trangThai, 'TU_CHOI');
+  assert.match(rejectedDetail.data.lyDoTuChoi, /Không phát hiện giao dịch/);
+  assert.equal((await request('GET', '/goi-dich-vu/me', undefined, other)).data.mucTieuAnUongs.some((item) => item.maMucTieu === 'EAT_HEALTHY'), false);
+
+  const activeSubscription = await db.DangKyDichVu.findOne({
+    where: { idNguoiDung: (await request('GET', '/auth/me', undefined, user)).data.idNguoiDung, trangThai: 'HOAT_DONG' },
+    order: [['idDangKyDichVu', 'DESC']],
+  });
+  await activeSubscription.update({ thoiGianKetThuc: new Date(Date.now() - 1000) });
+  const expiredAccess = await request('GET', '/goi-dich-vu/me', undefined, user);
+  assert.equal(expiredAccess.data.goiDichVu.maGoi, 'FREE');
+  assert.equal(expiredAccess.data.dangKyDichVu, null);
+  assert.equal((await request('POST', '/tu-van-ai', { cauHoi: 'Tư vấn thực đơn' }, user)).status, 403);
+  assert.equal((await request('POST', '/thanh-toan/vnpay/tao', {}, user)).status, 404);
+  assert.equal((await request('POST', '/thanh-toan/vietqr/webhook', {}, user)).status, 404);
 });
 test('users submit owned recipe drafts for admin moderation', async () => {
   const draft = await request(
@@ -546,6 +564,7 @@ test('last admin protection and disabled-role authentication', async () => {
   await userRole.update({ trangThai: 1 });
 });
 test('notification recipient validation and read ownership', async () => {
+  const unreadBefore = (await request('GET', '/thong-bao?daDoc=0', undefined, user)).data.length;
   assert.equal(
     (
       await request(
@@ -567,7 +586,7 @@ test('notification recipient validation and read ownership', async () => {
   assert.equal(r.data.soNguoiNhan, await db.NguoiDung.count({ where: { trangThai: 1 } }));
   const n = r.data.thongBao.idThongBao;
   assert.equal((await request('PATCH', `/thong-bao/${n}/read`, {}, user)).status, 200);
-  assert.equal((await request('GET', '/thong-bao?daDoc=0', undefined, user)).data.length, 0);
+  assert.equal((await request('GET', '/thong-bao?daDoc=0', undefined, user)).data.length, unreadBefore);
 });
 test('registered devices receive real Expo push payloads and can be disabled', async () => {
   const pushToken = 'ExponentPushToken[test-user-device-123]';

@@ -59,26 +59,26 @@ Script chỉ chạy ngoài production, có transaction và có thể chạy lạ
 - Ghi nhật ký thao tác quản trị; kiểm tra dữ liệu đầu vào, người nhận thông báo và giới hạn tần suất xác thực/upload.
 - Gói miễn phí giới hạn 10 công thức chưa từng mở mỗi ngày; công thức đã mở không tính lại. Cấp truy cập FREE/BASIC/PRO/CHEF được kiểm tra khi mở chi tiết.
 - Lịch ăn thủ công dùng được sau đăng nhập; tạo tự động và danh sách mua sắm yêu cầu Pro/Chef. Dinh dưỡng được ước tính từ dữ liệu mỗi 100 g và khối lượng quy đổi của nguyên liệu.
-- Thanh toán thật qua VNPAY dùng URL có chữ ký HMAC-SHA512. Quyền chỉ được kích hoạt từ IPN có chữ ký, terminal, mã đơn và số tiền hợp lệ; Return URL chỉ chuyển người dùng về ứng dụng. Luồng xác nhận thủ công cũ vẫn giữ làm phương án quản trị riêng và không thể xác nhận giao dịch VNPAY.
+- Mỗi sản phẩm tạo một VietQR Techcombank có đúng số tiền và mã chuyển khoản riêng. Khách bấm xác nhận sau khi chuyển khoản; quản trị viên kiểm tra số dư, duyệt hoặc từ chối yêu cầu. Chỉ yêu cầu được duyệt mới kích hoạt quyền 30 ngày và gửi thông báo cho khách.
 - `/api/tu-van-ai` chỉ dành cho Chef và hiện dùng bộ quy tắc minh bạch (`COOKMATE_RULES_V1`), luôn kèm cảnh báo không thay thế tư vấn y tế.
 
 Các endpoint quản trị mở rộng nằm dưới `/api/admin`; các route hiện có tiếp tục nằm trong `src/routes`. Thông báo được lưu trong ứng dụng và đồng thời gửi push qua Expo tới các thiết bị đã đăng ký.
 
-## Thanh toán VNPAY
+## Thanh toán VietQR và quản trị viên phê duyệt
 
-Đăng ký merchant Sandbox tại `https://sandbox.vnpayment.vn/devreg/`, sau đó đặt các biến sau trong `.env` cục bộ; không commit mã terminal hoặc secret:
+Ứng dụng tạo Quick Link VietQR từ tài khoản Techcombank `9330302005`, tên thụ hưởng `DƯƠNG TIẾN ANH`. Có thể thay cấu hình trong `.env` cục bộ:
 
 ```dotenv
-VNPAY_TMN_CODE=...
-VNPAY_HASH_SECRET=...
-VNPAY_PAYMENT_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
-VNPAY_RETURN_URL=https://your-public-api.example/api/thanh-toan/vnpay/return
-VNPAY_APP_RETURN_URL=cookmate://thanh-toan
+VIETQR_BANK_ID=TCB
+VIETQR_BANK_NAME=Techcombank
+VIETQR_ACCOUNT_NO=9330302005
+VIETQR_ACCOUNT_NAME=DƯƠNG TIẾN ANH
+VIETQR_TEMPLATE=print
 ```
 
-Đăng ký IPN URL tại VNPAY là `https://your-public-api.example/api/thanh-toan/vnpay/ipn`. Cả IPN và Return URL cần truy cập được qua HTTPS công khai; localhost không nhận được callback từ VNPAY. Ứng dụng mobile mở URL thanh toán do `POST /api/thanh-toan/vnpay/tao` trả về và nhận kết quả qua deep link `cookmate://thanh-toan`. Hãy dùng development build/ứng dụng cài thật để kiểm tra custom scheme, không dựa vào Expo Go.
+Mobile gọi `POST /api/thanh-toan/vietqr/tao` và hiển thị QR cùng hai nút **Xác nhận đã thanh toán** / **Quay lại**. Khi khách xác nhận, `PATCH /api/thanh-toan/:id/da-thanh-toan` tạo thông báo cho quản trị viên. Quản trị viên mở thông báo, kiểm tra số dư Techcombank rồi dùng `PATCH /api/admin/thanh-toan/:id/xac-nhan` hoặc `PATCH /api/admin/thanh-toan/:id/tu-choi`.
 
-Khi chuyển production, thay payment URL và bộ khóa bằng thông tin VNPAY production; không dùng khóa Sandbox. Tài liệu kỹ thuật chính thức: `https://sandbox.vnpayment.vn/apis/docs/thanh-toan-pay/pay.html`.
+Sau khi duyệt, quyền được kích hoạt 30 ngày và khách nhận thông báo trong ứng dụng/Expo Push. API `/api/goi-dich-vu/me` chỉ trả gói còn hạn; vì vậy mọi tính năng trả phí tự khóa khi thời gian kết thúc trôi qua. Quick Link VietQR chỉ tạo ảnh QR và luồng hiện tại không dùng SePay/webhook. Tài liệu định dạng Quick Link: `https://www.vietqr.io/danh-sach-api/link-tao-ma-nhanh/`.
 
 ## Kiểm thử
 

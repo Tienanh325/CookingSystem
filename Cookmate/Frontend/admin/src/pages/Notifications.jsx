@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Send, Bell } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { api, date } from '../lib/api'
 import useResource from '../lib/useResource'
 import {
@@ -11,13 +12,29 @@ import {
   ResourceState,
 } from '../components/ui'
 export default function Notifications() {
+  const navigate = useNavigate()
   const [page, setPage] = useState(1),
     [limit, setLimit] = useState(10),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [success, setSuccess] = useState(''),
     [everyone, setEveryone] = useState(true),
-    r = useResource(`/admin/thong-bao?page=${page}&limit=${limit}`)
+    r = useResource(`/admin/thong-bao?page=${page}&limit=${limit}`),
+    inbox = useResource('/thong-bao?limit=50')
+  const paymentRequests = (inbox.data || []).filter(
+    (item) => item.thongBao?.loai === 'YEU_CAU_THANH_TOAN',
+  )
+
+  async function openNotification(item) {
+    try {
+      if (!item.daDoc)
+        await api(`/thong-bao/${item.idThongBao}/read`, { method: 'PATCH', body: {} })
+      inbox.reload()
+      navigate(item.thongBao?.duongDan || '/payments')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
   async function submit(e) {
     e.preventDefault()
     const form = e.currentTarget
@@ -51,6 +68,31 @@ export default function Notifications() {
         title="Thông báo"
         description="Gửi một lời nhắn, mang cảm hứng đến mọi căn bếp."
       />
+      <section className="panel admin-inbox">
+        <div className="panel-heading">
+          <div>
+            <h2>Yêu cầu thanh toán cần xử lý</h2>
+            <p>Bấm vào thông báo để mở đúng giao dịch trong trang quản lý mua gói.</p>
+          </div>
+          <Bell size={20} />
+        </div>
+        <ResourceState {...inbox} empty={!paymentRequests.length} reload={inbox.reload} />
+        {paymentRequests.map((item) => (
+          <button
+            type="button"
+            key={`${item.idThongBao}-${item.idNguoiDung}`}
+            className={`notification-item actionable ${item.daDoc ? 'read' : 'unread'}`}
+            onClick={() => openNotification(item)}
+          >
+            <span>
+              <strong>{item.thongBao.tieuDe}</strong>
+              <small>{item.daDoc ? 'Đã đọc' : 'Mới'}</small>
+            </span>
+            <p>{item.thongBao.noiDung}</p>
+            <time>{date(item.thongBao.ngayTao)}</time>
+          </button>
+        ))}
+      </section>
       <div className="dashboard-grid">
         <section className="panel form-panel">
           <h2>Soạn thông báo</h2>

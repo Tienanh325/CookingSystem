@@ -26,6 +26,14 @@
 .button.secondary:hover {
   background: #faf5ee;
 }
+.button.danger {
+  background: #fff;
+  border-color: #e9b8b1;
+  color: #a43d27;
+}
+.button.danger:hover {
+  background: #fff0ed;
+}
 .button.ghost {
   background: transparent;
   color: var(--muted);
@@ -47,6 +55,24 @@
 .icon-button:hover {
   background: var(--soft);
   color: var(--accent);
+}
+.notification-bell {
+  position: relative;
+}
+.notification-bell > span {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #b73535;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
 }
 .danger {
   color: #b73535;
@@ -892,6 +918,95 @@ tbody tr:hover {
 .notification-item small {
   font-size: 10px;
   color: #ad9683;
+}
+.admin-inbox {
+  margin-bottom: 24px;
+}
+.notification-item.actionable {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.notification-item.actionable:hover {
+  background: #fdf8f2;
+}
+.notification-item.actionable.unread {
+  border-left: 4px solid var(--accent);
+  background: #fffaf5;
+}
+.notification-item.actionable > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.notification-item.actionable time {
+  font-size: 10px;
+  color: #ad9683;
+}
+.payment-sections {
+  display: grid;
+  gap: 24px;
+}
+.payment-section .panel-heading {
+  padding: 22px 24px;
+  margin: 0;
+}
+.payment-section .panel-heading p {
+  margin: 5px 0 0;
+}
+.payment-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 999px;
+  padding: 7px 11px;
+  background: #fff4de;
+  color: #9b671d;
+  font-size: 12px;
+  font-weight: 700;
+}
+.payment-count.success {
+  background: #eff6ea;
+  color: #5c793f;
+}
+.payment-count.rejected {
+  background: #fff0ed;
+  color: #a43d27;
+}
+.payment-count.neutral {
+  background: #f4f0eb;
+  color: #74675c;
+}
+.payment-actions {
+  display: flex;
+  gap: 8px;
+}
+.payment-actions .button {
+  padding: 8px 12px;
+  font-size: 11px;
+}
+.payment-countdown {
+  color: #5c793f;
+  white-space: nowrap;
+}
+.payment-empty {
+  text-align: center;
+  color: var(--muted);
+  padding: 26px;
+  font-weight: 400 !important;
+}
+.target-row {
+  animation: payment-highlight 2.4s ease-out;
+  background: #fff4de;
+}
+@keyframes payment-highlight {
+  from { background: #ffdca1; }
+  to { background: transparent; }
 }
 .checkbox-field {
   display: flex;

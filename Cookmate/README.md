@@ -40,6 +40,6 @@ Admin có tổng quan, công thức, dinh dưỡng nguyên liệu, danh mục, n
 
 Gói Miễn phí được mở tối đa 10 công thức chưa từng xem mỗi ngày và thấy quảng cáo nội bộ Cookmate. Basic bỏ quảng cáo; Pro thêm lịch tự động, phân tích dinh dưỡng, danh sách mua sắm và bao gồm bốn mục tiêu ăn uống; Chef thêm tư vấn, video và nội dung độc quyền. Eat Healthy, Gym & Fitness, Vegetarian và Family Pack cũng có thể mua riêng.
 
-Thanh toán đã tích hợp VNPAY: backend tạo URL ký HMAC-SHA512, VNPAY gửi IPN để xác nhận giao dịch và ứng dụng nhận kết quả qua deep link. Quyền 30 ngày chỉ được kích hoạt sau khi IPN hợp lệ và đúng số tiền. Luồng đối soát thủ công vẫn được giữ riêng cho quản trị nhưng không thể dùng để duyệt giao dịch VNPAY.
+Thanh toán dùng VietQR Techcombank: mỗi gói hoặc mục tiêu có QR điền sẵn số tiền, nội dung riêng và tên người thụ hưởng. Sau khi khách báo đã chuyển khoản, quản trị viên nhận thông báo, kiểm tra số dư rồi duyệt hoặc từ chối. Yêu cầu được duyệt kích hoạt quyền 30 ngày, hiển thị bộ đếm ngược và gửi thông báo cho khách; khi hết hạn, các tính năng trả phí tự khóa.
 
 Đã có kiểm thử API/MySQL cùng kiểm tra kiểu mobile và build admin. Bản Expo vẫn cần kiểm tra microphone, push notification và deep link trên thiết bị Android/iOS thật; kiểm tra TypeScript không tương đương tạo APK/IPA.

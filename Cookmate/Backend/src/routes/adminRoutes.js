@@ -96,4 +96,5 @@ router.get('/thong-bao', require('../controllers/ThongBaoController').listSent);
 router.patch('/bai-dang/:id/kiem-duyet', require('../controllers/MonAnController').reviewSubmission);
 router.get('/thanh-toan', require('../controllers/ThanhToanController').list);
 router.patch('/thanh-toan/:id/xac-nhan', require('../controllers/ThanhToanController').confirm);
+router.patch('/thanh-toan/:id/tu-choi', require('../controllers/ThanhToanController').reject);
 module.exports = router;

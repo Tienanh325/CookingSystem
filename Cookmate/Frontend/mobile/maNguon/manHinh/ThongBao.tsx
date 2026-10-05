@@ -14,7 +14,7 @@ import {
   TrangThai,
 } from '../thanhPhan/GiaoDien'
 import { mauSac, kieuDang as s } from '../ChuDe'
-export default function ThongBao() {
+export default function ThongBao({ navigation }) {
   const { nguoiDung } = useXacThuc(),
     [limit, setLimit] = useState(5),
     [page, setPage] = useState(1),
@@ -31,6 +31,22 @@ export default function ThongBao() {
       })
       r.reload()
     } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function open(item: any) {
+    setBusy(true)
+    setError('')
+    try {
+      if (!item.daDoc)
+        await goiApi(`/thong-bao/${item.idThongBao}/read`, { method: 'PATCH', body: {} })
+      const paymentId = String(item.thongBao?.duongDan || '').match(/[?&]id=(\d+)/)?.[1]
+      if (String(item.thongBao?.loai || '').startsWith('THANH_TOAN_') && paymentId)
+        navigation.navigate('KetQuaThanhToan', { id: Number(paymentId) })
+      r.reload()
+    } catch (e: any) {
       setError(e.message)
     } finally {
       setBusy(false)
@@ -61,9 +77,9 @@ export default function ThongBao() {
           {!r.loading &&
             r.data?.map((item) => (
               <Pressable
-                disabled={busy || !!item.daDoc}
+                disabled={busy}
                 accessibilityRole="button"
-                onPress={() => read(item.idThongBao)}
+                onPress={() => open(item)}
                 key={item.idThongBao}
                 style={[
                   s.card,
@@ -87,7 +103,7 @@ export default function ThongBao() {
                 <Text style={s.body}>{item.thongBao.noiDung}</Text>
                 <Text style={[s.small, { marginTop: 14 }]}>
                   {dinhDangNgay(item.thongBao.ngayTao)} ·{' '}
-                  {item.daDoc ? 'Đã đọc' : 'Chạm để đánh dấu đã đọc'}
+                  {item.daDoc ? 'Đã đọc · Chạm để mở' : 'Chạm để đọc và mở'}
                 </Text>
               </Pressable>
             ))}

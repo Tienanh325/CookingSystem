@@ -80,10 +80,10 @@ async function damBaoDanhMucGoi(transaction) {
   }
 }
 
-async function layGoiHienTai(idNguoiDung) {
-  if (!idNguoiDung) return db.GoiDichVu.findOne({ where: { maGoi: 'FREE', trangThai: 1 } });
+async function layDangKyHienTai(idNguoiDung) {
+  if (!idNguoiDung) return null;
   const now = new Date();
-  const active = await db.DangKyDichVu.findOne({
+  return db.DangKyDichVu.findOne({
     where: {
       idNguoiDung,
       trangThai: 'HOAT_DONG',
@@ -95,11 +95,17 @@ async function layGoiHienTai(idNguoiDung) {
       ['thoiGianBatDau', 'DESC'],
     ],
   });
+}
+
+async function layGoiHienTai(idNguoiDung) {
+  const active = await layDangKyHienTai(idNguoiDung);
   return active?.goiDichVu || db.GoiDichVu.findOne({ where: { maGoi: 'FREE', trangThai: 1 } });
 }
 
 async function layQuyenNguoiDung(idNguoiDung) {
-  const goi = await layGoiHienTai(idNguoiDung);
+  const dangKyDichVu = await layDangKyHienTai(idNguoiDung);
+  const goi = dangKyDichVu?.goiDichVu
+    || await db.GoiDichVu.findOne({ where: { maGoi: 'FREE', trangThai: 1 } });
   const goals = goi
     ? await goi.getMucTieuAnUongs({ where: { trangThai: 1 }, joinTableAttributes: [] })
     : [];
@@ -115,7 +121,14 @@ async function layQuyenNguoiDung(idNguoiDung) {
     : [];
   const mucTieu = new Map(goals.map((item) => [item.maMucTieu, item]));
   for (const item of purchased) mucTieu.set(item.mucTieuAnUong.maMucTieu, item.mucTieuAnUong);
-  return { goi, mucTieuAnUongs: [...mucTieu.values()] };
+  return { goi, dangKyDichVu, mucTieuAnUongs: [...mucTieu.values()] };
 }
 
-module.exports = { GOI_MAC_DINH, MUC_TIEU_MAC_DINH, damBaoDanhMucGoi, layGoiHienTai, layQuyenNguoiDung };
+module.exports = {
+  GOI_MAC_DINH,
+  MUC_TIEU_MAC_DINH,
+  damBaoDanhMucGoi,
+  layDangKyHienTai,
+  layGoiHienTai,
+  layQuyenNguoiDung,
+};
