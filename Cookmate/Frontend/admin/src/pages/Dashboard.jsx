@@ -1,13 +1,29 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUpRight, BookOpen, Users, Flame, Layers3, Plus, ChefHat } from 'lucide-react'
 import { useAuth } from '../context/auth'
 import useResource from '../lib/useResource'
-import { PageTitle, ResourceState, Status } from '../components/ui'
-import { date, imageUrl } from '../lib/api'
+import { PageTitle, ResourceState } from '../components/ui'
+import { imageUrl } from '../lib/api'
+
+const PERIODS = [
+  ['all', 'Tất cả'],
+  ['month', 'Tháng này'],
+  ['day', 'Hôm nay'],
+]
+
+function formatChartDate(value, withYear = false) {
+  const [year, month, day] = String(value).split('-')
+  return withYear ? `${day}/${month}/${year}` : `${day}/${month}`
+}
+
 export default function Dashboard() {
-  const { user } = useAuth(),
-    r = useResource('/admin/dashboard'),
-    data = r.data
+  const { user } = useAuth()
+  const [period, setPeriod] = useState('all')
+  const r = useResource(`/admin/dashboard?period=${period}`)
+  const data = r.data
+  const maxActivity = Math.max(1, ...(data?.activity || []).map((item) => Number(item.count)))
+
   return (
     <>
       <PageTitle
@@ -33,7 +49,7 @@ export default function Dashboard() {
           <span>cooking with love</span>
         </div>
       </section>
-      <ResourceState {...r} reload={r.reload} />
+      <ResourceState loading={r.loading} error={r.error} reload={r.reload} />
       {data && (
         <>
           <div className="stats-grid">
@@ -55,23 +71,39 @@ export default function Dashboard() {
           </div>
           <div className="dashboard-grid">
             <section className="panel">
-              <div className="panel-heading">
+              <div className="panel-heading ranking-heading">
                 <div>
-                  <h2>Công thức mới nhất</h2>
-                  <p className="muted">Những hương vị vừa được thêm vào bếp</p>
+                  <h2>Xếp hạng món được nấu nhiều</h2>
+                  <p className="muted">Dựa trên số phiên nấu đã hoàn thành</p>
                 </div>
-                <Link to="/recipes" className="text-link">
-                  Xem tất cả <ArrowUpRight size={16} />
-                </Link>
+                <div className="ranking-actions">
+                  <div className="period-filter" role="group" aria-label="Lọc thời gian xếp hạng">
+                    {PERIODS.map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={period === value ? 'active' : ''}
+                        aria-pressed={period === value}
+                        onClick={() => setPeriod(value)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <Link to={`/rankings?type=cooked_most&period=${period}`} className="text-link">
+                    Xem tất cả <ArrowUpRight size={16} />
+                  </Link>
+                </div>
               </div>
-              {data.recent.length ? (
-                <div className="recipe-mini-list">
-                  {data.recent.map((item) => (
+              {data.ranking.length ? (
+                <div className="recipe-mini-list ranking-list">
+                  {data.ranking.map((item) => (
                     <Link
                       key={item.idMonAn}
                       to={`/recipes/${item.idMonAn}/edit`}
                       className="recipe-mini"
                     >
+                      <strong className={`rank-number rank-${item.xepHang}`}>#{item.xepHang}</strong>
                       <div className="recipe-thumb">
                         {item.anhDaiDien ? (
                           <img src={imageUrl(item.anhDaiDien)} alt="" />
@@ -81,16 +113,20 @@ export default function Dashboard() {
                       </div>
                       <div>
                         <strong>{item.tenMonAn}</strong>
-                        <small>
-                          {item.danhMuc?.tenDanhMuc} · {date(item.ngayTao)}
-                        </small>
+                        <small>{item.danhMuc?.tenDanhMuc || 'Chưa có danh mục'}</small>
                       </div>
-                      <Status active={item.trangThai === 1} />
+                      <span className="cook-count">
+                        <Flame size={13} />
+                        {Number(item.soLuotNau).toLocaleString('vi-VN')} lượt
+                      </span>
                     </Link>
                   ))}
                 </div>
               ) : (
-                <ResourceState empty />
+                <div className="empty ranking-empty">
+                  <ChefHat size={34} />
+                  <p>Chưa có món nào được nấu hoàn thành trong khoảng thời gian này.</p>
+                </div>
               )}
             </section>
             <section className="panel">
@@ -100,26 +136,27 @@ export default function Dashboard() {
                   <p className="muted">Phiên nấu trong 30 ngày gần nhất</p>
                 </div>
               </div>
-              {data.activity.length ? (
+              <div className="activity-chart-scroll">
                 <div className="activity-chart">
-                  {data.activity.map((item) => (
-                    <div key={item.date} title={`${item.date}: ${item.count} lượt nấu`}>
-                      <span>{item.count}</span>
-                      <i
-                        style={{
-                          height: `${Math.max(8, (Number(item.count) / Math.max(...data.activity.map((x) => Number(x.count)))) * 150)}px`,
-                        }}
-                      />
-                      <small>{String(item.date).slice(5)}</small>
-                    </div>
-                  ))}
+                  {data.activity.map((item) => {
+                    const count = Number(item.count)
+                    const height = count ? Math.max(7, (count / maxActivity) * 100) : 0
+                    return (
+                      <div
+                        className="activity-column"
+                        key={item.date}
+                        title={`${formatChartDate(item.date, true)}: ${count} lượt nấu`}
+                      >
+                        <span>{count}</span>
+                        <div className="activity-bar-track">
+                          <i style={{ height: `${height}%` }} />
+                        </div>
+                        <small>{formatChartDate(item.date)}</small>
+                      </div>
+                    )
+                  })}
                 </div>
-              ) : (
-                <div className="empty">
-                  <Flame size={34} />
-                  <p>Chưa có phiên nấu trong 30 ngày qua.</p>
-                </div>
-              )}
+              </div>
               <div className="chart-note">{data.hidden} công thức đang ở chế độ ẩn</div>
             </section>
           </div>

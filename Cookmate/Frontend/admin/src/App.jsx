@@ -12,6 +12,7 @@ import Notifications from './pages/Notifications'
 import Settings from './pages/Settings'
 import Submissions from './pages/Submissions'
 import Payments from './pages/Payments'
+import Rankings from './pages/Rankings'
 import './App.css'
 function Guard() {
   const { loading, user } = useAuth()
@@ -33,6 +34,7 @@ export default function App() {
               <Route path="recipes/:id/edit" element={<RecipeEditor />} />
               <Route path="submissions" element={<Submissions />} />
               <Route path="payments" element={<Payments />} />
+              <Route path="rankings" element={<Rankings />} />
               {['categories', 'ingredients', 'users', 'roles', 'comments', 'reviews', 'logs'].map(
                 (kind) => (
                   <Route key={kind} path={kind} element={<Records key={kind} kind={kind} />} />

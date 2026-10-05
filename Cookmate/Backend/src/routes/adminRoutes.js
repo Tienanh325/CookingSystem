@@ -3,6 +3,7 @@ const { Op, fn, col } = require('sequelize');
 const db = require('../models');
 const { authenticate, authorizeAdmin } = require('../middleware/authMiddleware');
 const asyncHandler = require('../utils/asyncHandler');
+const error = require('../utils/httpError');
 const { sendSuccess } = require('../utils/apiResponse');
 const { getPagination, getPagingMeta } = require('../utils/query');
 const router = express.Router();
@@ -22,19 +23,34 @@ for (const [path, controller] of [
 router.get(
   '/dashboard',
   asyncHandler(async (req, res) => {
+    const period = req.query.period || 'all';
+    if (!['all', 'month', 'day'].includes(period))
+      throw error(400, 'Bộ lọc xếp hạng không hợp lệ.');
+    const now = new Date();
+    let rankingSince = null;
+    if (period === 'month') rankingSince = new Date(now.getFullYear(), now.getMonth(), 1);
+    if (period === 'day') {
+      rankingSince = new Date(now);
+      rankingSince.setHours(0, 0, 0, 0);
+    }
     const since = new Date();
     since.setDate(since.getDate() - 29);
     since.setHours(0, 0, 0, 0);
-    const [recipes, users, cooks, categories, hidden, recent, activity] = await Promise.all([
+    const rankingWhere = { trangThai: 'HOAN_THANH' };
+    if (rankingSince) rankingWhere.thoiGianKetThuc = { [Op.gte]: rankingSince };
+    const [recipes, users, cooks, categories, hidden, rankingCounts, activityRows] = await Promise.all([
       db.MonAn.count({ where: { trangThai: 1 } }),
       db.NguoiDung.count(),
       db.LichSuNau.count({ where: { trangThai: 'HOAN_THANH' } }),
       db.DanhMuc.count({ where: { trangThai: 1 } }),
       db.MonAn.count({ where: { trangThai: 0 } }),
-      db.MonAn.findAll({
-        order: [['ngayTao', 'DESC']],
+      db.LichSuNau.findAll({
+        attributes: ['idMonAn', [fn('COUNT', col('idLichSu')), 'soLuotNau']],
+        where: rankingWhere,
+        group: ['idMonAn'],
+        order: [[fn('COUNT', col('idLichSu')), 'DESC'], ['idMonAn', 'ASC']],
         limit: 5,
-        include: [{ model: db.DanhMuc, as: 'danhMuc' }],
+        raw: true,
       }),
       db.LichSuNau.findAll({
         attributes: [
@@ -47,17 +63,50 @@ router.get(
         raw: true,
       }),
     ]);
+    const rankedRecipes = rankingCounts.length
+      ? await db.MonAn.findAll({
+          where: { idMonAn: { [Op.in]: rankingCounts.map((item) => item.idMonAn) } },
+          attributes: ['idMonAn', 'tenMonAn', 'anhDaiDien', 'diemDanhGia', 'trangThai'],
+          include: [{ model: db.DanhMuc, as: 'danhMuc', attributes: ['tenDanhMuc'] }],
+        })
+      : [];
+    const recipeById = new Map(rankedRecipes.map((item) => [Number(item.idMonAn), item]));
+    const ranking = rankingCounts
+      .map((item, index) => {
+        const recipe = recipeById.get(Number(item.idMonAn));
+        if (!recipe) return null;
+        recipe.setDataValue('soLuotNau', Number(item.soLuotNau));
+        recipe.setDataValue('xepHang', index + 1);
+        return recipe;
+      })
+      .filter(Boolean);
+    const activityByDate = new Map(
+      activityRows.map((item) => [String(item.date), Number(item.count)]),
+    );
+    const activity = [];
+    for (let index = 0; index < 30; index += 1) {
+      const day = new Date(since);
+      day.setDate(since.getDate() + index);
+      const date = [
+        day.getFullYear(),
+        String(day.getMonth() + 1).padStart(2, '0'),
+        String(day.getDate()).padStart(2, '0'),
+      ].join('-');
+      activity.push({ date, count: activityByDate.get(date) || 0 });
+    }
     return sendSuccess(res, 200, 'Tổng quan', {
       recipes,
       users,
       cooks,
       categories,
       hidden,
-      recent,
+      rankingPeriod: period,
+      ranking,
       activity,
     });
   }),
 );
+router.get('/xep-hang', require('../controllers/XepHangController').list);
 router.get(
   '/binh-luan',
   asyncHandler(async (req, res) => {

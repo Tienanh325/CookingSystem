@@ -66,6 +66,10 @@ const FIELD_LABELS = {
   idNguoiDung: 'Người dùng',
   maxTime: 'Thời gian tối đa',
   thoiGianToiDa: 'Thời gian tối đa',
+  tenLich: 'Tên lịch',
+  tuNgay: 'Ngày bắt đầu',
+  denNgay: 'Ngày kết thúc',
+  mucTieuKcalMoiNgay: 'Mục tiêu năng lượng mỗi ngày',
   daDoc: 'Trạng thái đã đọc',
   trangThaiDuyet: 'Trạng thái duyệt',
   ingredients: 'Danh sách nguyên liệu',
@@ -311,6 +315,13 @@ function validateRequest(req, res, next) {
     schema = z.object({ noiDung: text(5000), idBinhLuanCha: id.nullable().optional() });
   else if (/^\/binh-luan\/\d+$/.test(path)) schema = z.object({ noiDung: text(5000) });
   else if (/\/steps\/\d+$/.test(path)) schema = z.object({ daHoanThanh: z.boolean() });
+  else if (path === '/lich-an')
+    schema = z.object({
+      tenLich: text(150),
+      tuNgay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      denNgay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      mucTieuKcalMoiNgay: z.number().int().min(1000).max(5000),
+    });
   else if (path === '/lich-su-nau') schema = z.object({ idMonAn: id });
   else if (path === '/thong-bao')
     schema = z

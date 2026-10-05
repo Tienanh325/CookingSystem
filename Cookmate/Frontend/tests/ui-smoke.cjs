@@ -161,7 +161,26 @@ async function main() {
   await page.getByLabel('Mật khẩu', { exact: true }).fill('UiPassword123!');
   await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Xin chào, Anh!' })).toBeVisible();
+  await expect(page.locator('.activity-column')).toHaveCount(30);
+  const activityLabels = await page.locator('.activity-column small').allTextContents();
+  assert.ok(activityLabels.every((label) => /^\d{2}\/\d{2}$/.test(label)));
+  const activityBottoms = await page
+    .locator('.activity-bar-track')
+    .evaluateAll((items) => items.map((item) => Math.round(item.getBoundingClientRect().bottom)));
+  assert.equal(new Set(activityBottoms).size, 1, 'Các cột nhịp bếp phải có cùng đường chân.');
+  await page.getByRole('button', { name: 'Tháng này' }).click();
+  await expect(page.getByRole('button', { name: 'Tháng này' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
   await page.screenshot({ path: path.join(out, 'admin-dashboard.png'), fullPage: true });
+  await page.getByRole('link', { name: 'Xem tất cả' }).click();
+  await expect(page.getByRole('heading', { name: 'Bảng xếp hạng công thức' })).toBeVisible();
+  await expect(page.locator('.ranking-type-card')).toHaveCount(7);
+  await expect(page.locator('.ranking-page-row')).toHaveCount(1);
+  await page.screenshot({ path: path.join(out, 'admin-rankings.png'), fullPage: true });
+  await page.getByRole('link', { name: 'Bảng điều khiển', exact: true }).last().click();
+  await expect(page.getByRole('heading', { name: 'Xin chào, Anh!' })).toBeVisible();
   await page.getByRole('link', { name: 'Thêm công thức', exact: true }).click();
   await page.getByLabel('Tên món ăn *').fill('Cơm nhà kiểm thử');
   await page.getByLabel('Danh mục *').selectOption(String(category.idDanhMuc));

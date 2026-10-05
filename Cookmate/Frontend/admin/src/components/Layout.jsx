@@ -19,11 +19,18 @@ import {
   X,
   ListChecks,
   CreditCard,
+  Trophy,
 } from 'lucide-react'
 import { useAuth } from '../context/auth'
 import { api } from '../lib/api'
 const groups = [
-  ['TỔNG QUAN', [['/', 'Bảng điều khiển', LayoutDashboard]]],
+  [
+    'TỔNG QUAN',
+    [
+      ['/', 'Bảng điều khiển', LayoutDashboard],
+      ['/rankings', 'Bảng xếp hạng', Trophy],
+    ],
+  ],
   [
     'QUẢN LÝ NỘI DUNG',
     [

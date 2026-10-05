@@ -11,6 +11,40 @@ const recipeImages = require('./recipe-images');
 const recipeVideos = require('./recipe-videos.json');
 const credentialsPath = path.join(__dirname, '../.demo-credentials.local');
 const marker = 'COOKMATE_DEMO_V1';
+const DINH_DUONG_THAM_KHAO = {
+  'Cơm nguội': [130, 2.7, 28.2, 0.3, 0.4, 1],
+  'Trứng gà': [143, 12.6, 0.7, 9.5, 0, 142],
+  'Hành lá': [32, 1.8, 7.3, 0.2, 2.6, 16],
+  'Dầu ăn': [884, 0, 0, 100, 0, 0],
+  'Bí đỏ': [26, 1, 6.5, 0.1, 0.5, 1],
+  'Đậu phụ': [76, 8, 1.9, 4.8, 0.3, 7],
+  Nước: [0, 0, 0, 0, 0, 0],
+  Muối: [0, 0, 0, 0, 0, 39300],
+  'Cà chua': [18, 0.9, 3.9, 0.2, 1.2, 5],
+  'Rau muống': [19, 2.6, 3.1, 0.2, 2.1, 113],
+  Tỏi: [149, 6.4, 33.1, 0.5, 2.1, 17],
+  'Khoai lang': [86, 1.6, 20.1, 0.1, 3, 55],
+  'Dưa chuột': [15, 0.7, 3.6, 0.1, 0.5, 2],
+  'Dầu ô liu': [884, 0, 0, 100, 0, 0],
+  'Nước cốt chanh': [22, 0.4, 6.9, 0.2, 0.3, 1],
+  'Gạo tẻ': [365, 7.1, 80, 0.7, 1.3, 5],
+  'Nấm hương tươi': [34, 2.2, 6.8, 0.5, 2.5, 9],
+  'Cà rốt': [41, 0.9, 9.6, 0.2, 2.8, 69],
+  'Mì trứng khô': [384, 14.2, 71.3, 4.4, 3.3, 21],
+  'Nước tương': [53, 8.1, 4.9, 0.6, 0.8, 5493],
+  'Bánh mì': [265, 9, 49, 3.2, 2.7, 491],
+  'Sữa chua': [61, 3.5, 4.7, 3.3, 0, 46],
+  Chuối: [89, 1.1, 22.8, 0.3, 2.6, 1],
+  'Yến mạch ăn liền': [379, 13.2, 67.7, 6.5, 10.1, 6],
+};
+const CAC_CHI_SO = ['nangLuongKcal', 'proteinG', 'carbG', 'chatBeoG', 'chatXoG', 'natriMg'];
+const khoiLuongQuyDoi = (name, amount, unit) => {
+  if (unit === 'g') return Number(amount);
+  if (unit === 'ml') return Number(amount) * (name.includes('Dầu') ? 0.92 : name === 'Nước tương' ? 1.16 : 1);
+  if (unit === 'quả') return Number(amount) * (name === 'Trứng gà' ? 50 : name === 'Chuối' ? 118 : 100);
+  if (unit === 'ổ') return Number(amount) * 60;
+  return null;
+};
 
 async function seedDemo() {
   if (process.env.NODE_ENV === 'production') throw new Error('Demo seed is for development only.');
@@ -69,11 +103,30 @@ async function seedDemo() {
       const existingCover = await db.HinhAnhMonAn.findOne({ where: { idMonAn, anhDaiDien: 1 }, transaction });
       if (existingCover) await existingCover.update({ duongDan: cover, moTa: `Ảnh đúng món ${data.name}` }, { transaction });
       // Keep user edits to existing recipes and historical snapshots when re-running.
+      for (const [name, amount, unit] of data.ingredients) {
+        const values = DINH_DUONG_THAM_KHAO[name];
+        const dinhDuong = values
+          ? Object.fromEntries(CAC_CHI_SO.map((key, index) => [key, values[index]]))
+          : {};
+        const ingredient = await ensure('NguyenLieu', { tenNguyenLieu: name }, {
+          donViMacDinh: unit,
+          moTa: `Nguyên liệu dùng trong ${data.name.toLowerCase()}.`,
+          ...dinhDuong,
+        });
+        if (values && CAC_CHI_SO.every((key) => Number(ingredient[key]) === 0))
+          await ingredient.update(dinhDuong, { transaction });
+        const relation = await ensure(
+          'MonAnNguyenLieu',
+          { idMonAn, idNguyenLieu: ingredient.idNguyenLieu },
+          { soLuong: amount, donVi: unit, khoiLuongGram: khoiLuongQuyDoi(name, amount, unit) },
+        );
+        if (!relation.khoiLuongGram)
+          await relation.update(
+            { khoiLuongGram: khoiLuongQuyDoi(name, amount, unit) },
+            { transaction },
+          );
+      }
       if (created) {
-        for (const [name, amount, unit] of data.ingredients) {
-          const ingredient = await ensure('NguyenLieu', { tenNguyenLieu: name }, { donViMacDinh: unit, moTa: `Nguyên liệu dùng trong ${data.name.toLowerCase()}.` });
-          await ensure('MonAnNguyenLieu', { idMonAn, idNguyenLieu: ingredient.idNguyenLieu }, { soLuong: amount, donVi: unit });
-        }
         for (let j = 0; j < data.steps.length; j++) await ensure('BuocNau', { idMonAn, phienBan: 1, soThuTu: j + 1 }, {
           tieuDe: ['Sơ chế nguyên liệu', 'Chế biến', 'Hoàn thiện và thưởng thức'][j], huongDan: data.steps[j],
           thoiGian: j === 1 ? data.cook : 0,

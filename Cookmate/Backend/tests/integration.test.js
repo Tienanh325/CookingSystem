@@ -227,6 +227,121 @@ test('admin creates catalog and publishable recipe; audits persist', async () =>
   assert.equal(recipe.tongThoiGian, 25);
   assert.ok((await db.NhatKyHeThong.count()) >= 3);
 });
+test('admin dashboard ranks completed recipes by selected period and returns aligned activity days', async () => {
+  const account = await db.NguoiDung.findOne({ where: { email: 'user@test.local' } });
+  const otherRecipe = await db.MonAn.create({
+    idDanhMuc: category.idDanhMuc,
+    tenMonAn: 'Món xếp hạng khác',
+    trangThai: 1,
+    trangThaiDuyet: 'DA_DUYET',
+  });
+  const now = new Date();
+  const old = new Date(now);
+  old.setDate(old.getDate() - 40);
+  await db.LichSuNau.bulkCreate([
+    ...Array.from({ length: 2 }, () => ({
+      idNguoiDung: account.idNguoiDung,
+      idMonAn: recipe.idMonAn,
+      thoiGianBatDau: now,
+      thoiGianKetThuc: now,
+      trangThai: 'HOAN_THANH',
+    })),
+    {
+      idNguoiDung: account.idNguoiDung,
+      idMonAn: otherRecipe.idMonAn,
+      thoiGianBatDau: now,
+      thoiGianKetThuc: now,
+      trangThai: 'HOAN_THANH',
+    },
+    ...Array.from({ length: 4 }, () => ({
+      idNguoiDung: account.idNguoiDung,
+      idMonAn: otherRecipe.idMonAn,
+      thoiGianBatDau: old,
+      thoiGianKetThuc: old,
+      trangThai: 'HOAN_THANH',
+    })),
+  ]);
+  const allTime = await request('GET', '/admin/dashboard?period=all', undefined, admin);
+  assert.equal(allTime.status, 200, JSON.stringify(allTime));
+  assert.equal(allTime.data.rankingPeriod, 'all');
+  assert.equal(allTime.data.ranking[0].idMonAn, otherRecipe.idMonAn);
+  assert.equal(allTime.data.ranking[0].soLuotNau, 5);
+  assert.equal(allTime.data.activity.length, 30);
+  assert.ok(allTime.data.activity.every((item) => /^\d{4}-\d{2}-\d{2}$/.test(item.date)));
+  assert.ok(allTime.data.activity.some((item) => item.count === 0));
+  assert.equal(allTime.data.activity.reduce((sum, item) => sum + item.count, 0), 3);
+  const month = await request('GET', '/admin/dashboard?period=month', undefined, admin);
+  assert.equal(month.status, 200, JSON.stringify(month));
+  assert.equal(month.data.ranking[0].idMonAn, recipe.idMonAn);
+  assert.equal(month.data.ranking[0].soLuotNau, 2);
+  const day = await request('GET', '/admin/dashboard?period=day', undefined, admin);
+  assert.equal(day.status, 200, JSON.stringify(day));
+  assert.equal(day.data.ranking[0].idMonAn, recipe.idMonAn);
+  assert.equal((await request('GET', '/admin/dashboard?period=week', undefined, admin)).status, 400);
+});
+test('admin recipe rankings support all requested metrics, periods and pagination', async () => {
+  const account = await db.NguoiDung.findOne({ where: { email: 'user@test.local' } });
+  const otherAccount = await db.NguoiDung.findOne({ where: { email: 'other@test.local' } });
+  const otherRecipe = await db.MonAn.findOne({ where: { tenMonAn: 'Món xếp hạng khác' } });
+  const ratings = await db.DanhGia.bulkCreate([
+    { idNguoiDung: account.idNguoiDung, idMonAn: recipe.idMonAn, soSao: 2 },
+    { idNguoiDung: otherAccount.idNguoiDung, idMonAn: otherRecipe.idMonAn, soSao: 5 },
+  ]);
+  const comments = await db.BinhLuan.bulkCreate([
+    { idNguoiDung: account.idNguoiDung, idMonAn: recipe.idMonAn, noiDung: 'Một bình luận' },
+    { idNguoiDung: account.idNguoiDung, idMonAn: otherRecipe.idMonAn, noiDung: 'Bình luận thứ nhất' },
+    { idNguoiDung: otherAccount.idNguoiDung, idMonAn: otherRecipe.idMonAn, noiDung: 'Bình luận thứ hai' },
+  ]);
+  await db.YeuThich.bulkCreate([
+    { idNguoiDung: account.idNguoiDung, idMonAn: recipe.idMonAn },
+    { idNguoiDung: account.idNguoiDung, idMonAn: otherRecipe.idMonAn },
+    { idNguoiDung: otherAccount.idNguoiDung, idMonAn: otherRecipe.idMonAn },
+  ]);
+  try {
+    const expectedFirst = {
+      cooked_most: otherRecipe.idMonAn,
+      cooked_least: recipe.idMonAn,
+      rating_high: otherRecipe.idMonAn,
+      rating_low: recipe.idMonAn,
+      favorite_most: otherRecipe.idMonAn,
+      comments_most: otherRecipe.idMonAn,
+      comments_least: recipe.idMonAn,
+    };
+    for (const [type, idMonAn] of Object.entries(expectedFirst)) {
+      const result = await request(
+        'GET',
+        `/admin/xep-hang?type=${type}&period=all&page=1&limit=10`,
+        undefined,
+        admin,
+      );
+      assert.equal(result.status, 200, JSON.stringify(result));
+      assert.equal(result.data.loaiXepHang, type);
+      assert.equal(result.data.items[0].idMonAn, idMonAn, JSON.stringify(result.data));
+      assert.equal(result.data.items[0].xepHang, 1);
+    }
+    const paged = await request(
+      'GET',
+      '/admin/xep-hang?type=cooked_most&period=day&page=1&limit=1',
+      undefined,
+      admin,
+    );
+    assert.equal(paged.status, 200, JSON.stringify(paged));
+    assert.equal(paged.data.items.length, 1);
+    assert.equal(paged.meta.totalItems, 2);
+    assert.equal(paged.meta.totalPages, 2);
+    assert.equal((await request('GET', '/admin/xep-hang?type=unknown', undefined, admin)).status, 400);
+    assert.equal((await request('GET', '/admin/xep-hang?period=week', undefined, admin)).status, 400);
+  } finally {
+    await db.DanhGia.destroy({ where: { idDanhGia: ratings.map((item) => item.idDanhGia) } });
+    await db.BinhLuan.destroy({ where: { idBinhLuan: comments.map((item) => item.idBinhLuan) } });
+    await db.YeuThich.destroy({
+      where: {
+        idNguoiDung: [account.idNguoiDung, otherAccount.idNguoiDung],
+        idMonAn: [recipe.idMonAn, otherRecipe.idMonAn],
+      },
+    });
+  }
+});
 test('recipe nutrition is calculated from ingredient weight per serving', async () => {
   const updatedIngredient = await request(
     'PATCH',
@@ -266,12 +381,64 @@ test('meal calendar supports manual planning, evaluation and Pro automation', as
   const pro = await db.GoiDichVu.findOne({ where: { maGoi: 'PRO' } });
   const account = (await request('GET', '/auth/me', undefined, user)).data;
   await db.DangKyDichVu.create({ idNguoiDung: account.idNguoiDung, idGoiDichVu: pro.idGoiDichVu, thoiGianKetThuc: new Date(Date.now() + 86400000) });
+  for (let index = 1; index <= 3; index += 1) {
+    const balancedIngredient = await db.NguyenLieu.create({
+      tenNguyenLieu: `Nguyên liệu cân bằng ${index}`,
+      donViMacDinh: 'g',
+      nangLuongKcal: 200,
+      proteinG: 12,
+      carbG: 27.5,
+      chatBeoG: 4.67,
+      chatXoG: 2.8,
+      natriMg: 100,
+    });
+    const balancedRecipe = await db.MonAn.create({
+      idDanhMuc: category.idDanhMuc,
+      idTacGia: account.idNguoiDung,
+      tenMonAn: `Món cân bằng ${index}`,
+      khauPhan: 1,
+      trangThai: 1,
+      trangThaiDuyet: 'DA_DUYET',
+      diemDanhGia: 5,
+    });
+    await db.MonAnNguyenLieu.create({
+      idMonAn: balancedRecipe.idMonAn,
+      idNguyenLieu: balancedIngredient.idNguyenLieu,
+      soLuong: 150,
+      donVi: 'g',
+      khoiLuongGram: 150,
+    });
+  }
   const generated = await request('POST', `/lich-an/${plan.data.idLichAn}/tao-tu-dong`, {}, user);
   assert.equal(generated.status, 200, JSON.stringify(generated));
   assert.equal(generated.data.buaAns.length, 21);
+  assert.equal(generated.data.danhGiaDinhDuong.length, 7);
+  assert.ok(generated.data.danhGiaDinhDuong.every((day) => day.datMucTieu));
+  const generatedEvaluation = await request('GET', `/lich-an/${plan.data.idLichAn}/danh-gia`, undefined, user);
+  assert.equal(generatedEvaluation.status, 200, JSON.stringify(generatedEvaluation));
+  for (const day of generatedEvaluation.data.theoNgay) {
+    assert.equal(day.datMucTieu, true, JSON.stringify(day));
+    assert.ok(day.nangLuongKcal >= day.mucTieu.nangLuongKcal.min);
+    assert.ok(day.nangLuongKcal <= day.mucTieu.nangLuongKcal.max);
+    assert.ok(day.proteinG >= day.mucTieu.proteinG.min);
+    assert.ok(day.carbG >= day.mucTieu.carbG.min);
+    assert.ok(day.chatBeoG >= day.mucTieu.chatBeoG.min);
+    assert.ok(day.chatXoG >= day.mucTieu.chatXoG.min);
+    assert.ok(day.natriMg <= day.mucTieu.natriMg.max);
+  }
   const shopping = await request('GET', `/lich-an/${plan.data.idLichAn}/danh-sach-mua-sam`, undefined, user);
   assert.equal(shopping.status, 200, JSON.stringify(shopping));
   assert.ok(shopping.data[0].soLuong > 0);
+
+  const impossiblePlan = await request('POST', '/lich-an', {
+    tenLich: 'Lịch không thể cân bằng', tuNgay: '2026-10-05', denNgay: '2026-10-05', mucTieuKcalMoiNgay: 5000,
+  }, user);
+  await request('POST', `/lich-an/${impossiblePlan.data.idLichAn}/bua-an`, {
+    idMonAn: recipe.idMonAn, ngay: '2026-10-05', loaiBua: 'TRUA', soKhauPhan: 1,
+  }, user);
+  assert.equal((await request('POST', `/lich-an/${impossiblePlan.data.idLichAn}/tao-tu-dong`, {}, user)).status, 409);
+  const preservedPlan = await request('GET', `/lich-an/${impossiblePlan.data.idLichAn}`, undefined, user);
+  assert.equal(preservedPlan.data.buaAns.length, 1);
 });
 test('manually reviewed VietQR payments activate Chef and individual goals', async () => {
   const catalog = (await request('GET', '/goi-dich-vu')).data;

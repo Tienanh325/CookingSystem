@@ -64,6 +64,12 @@ Script chỉ chạy ngoài production, có transaction và có thể chạy lạ
 
 Các endpoint quản trị mở rộng nằm dưới `/api/admin`; các route hiện có tiếp tục nằm trong `src/routes`. Thông báo được lưu trong ứng dụng và đồng thời gửi push qua Expo tới các thiết bị đã đăng ký.
 
+### Lập lịch ăn tự động Pro/Chef
+
+Thuật toán chỉ ghi lịch mới khi từng ngày có đủ ba bữa chính và đồng thời đạt các ngưỡng đang được Cookmate theo dõi: 95–105% mục tiêu kcal, protein 10–35% năng lượng, carbohydrate 45–65%, chất béo 20–35%, chất xơ tối thiểu 14 g/1.000 kcal và natri không quá 2.300 mg. Công thức thiếu khối lượng quy đổi hoặc dữ liệu dinh dưỡng bị loại khỏi bộ chọn. Nếu không tìm được tổ hợp hợp lệ, API trả `409` và giữ nguyên lịch cũ.
+
+Các tỷ lệ đa lượng dựa trên AMDR/DRI; đây là kiểm tra kỹ thuật theo dữ liệu hiện có, không bảo đảm đầy đủ vitamin, khoáng chất hoặc phù hợp bệnh lý cá nhân. Khi dùng dữ liệu mẫu cũ, chạy lại `npm run seed:demo` để bổ sung dữ liệu dinh dưỡng tham khảo và khối lượng quy đổi mà không ghi đè giá trị dinh dưỡng người dùng đã nhập.
+
 ## Thanh toán VietQR và quản trị viên phê duyệt
 
 Ứng dụng tạo Quick Link VietQR từ tài khoản Techcombank `9330302005`, tên thụ hưởng `DƯƠNG TIẾN ANH`. Có thể thay cấu hình trong `.env` cục bộ:

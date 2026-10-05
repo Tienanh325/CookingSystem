@@ -329,8 +329,11 @@ export default function ChiTietMonAn({ route, navigation }) {
                       <Text style={[s.body, { fontWeight: '700' }]}>{value}</Text>
                     </View>
                   ))}
-                  {!recipe.dinhDuong.dayDuDuLieu && (
+                  {!!recipe.dinhDuong.thieuKhoiLuong?.length && (
                     <Text style={[s.small, { color: mauSac.accent }]}>Chưa thể tính đủ do thiếu khối lượng quy đổi của: {recipe.dinhDuong.thieuKhoiLuong.join(', ')}.</Text>
+                  )}
+                  {!!recipe.dinhDuong.thieuDuLieuDinhDuong?.length && (
+                    <Text style={[s.small, { color: mauSac.accent }]}>Chưa có dữ liệu dinh dưỡng của: {recipe.dinhDuong.thieuDuLieuDinhDuong.join(', ')}.</Text>
                   )}
                   <Text style={s.small}>{recipe.dinhDuong.ghiChu}</Text>
                 </View>
