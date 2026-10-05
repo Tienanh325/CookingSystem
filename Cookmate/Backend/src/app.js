@@ -44,16 +44,13 @@ app.use(
   }),
 );
 app.use(
-  [
-    '/api/auth/forgot-password',
-    '/api/auth/reset-password',
-  ],
+  '/api/auth/forgot-password',
   rateLimit({
     windowMs: 15 * 60 * 1000,
-    limit: 10,
+    limit: 5,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
-    message: { success: false, message: 'Quá nhiều yêu cầu email. Vui lòng thử lại sau.' },
+    message: { success: false, message: 'Quá nhiều yêu cầu khôi phục. Vui lòng thử lại sau.' },
   }),
 );
 app.use('/api', validateRequest);

@@ -1,3 +1,4 @@
+const crypto = require('node:crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const sequelize = require('../config/database');
@@ -10,13 +11,8 @@ const asyncHandler = require('../utils/asyncHandler');
 const { sendError, sendSuccess } = require('../utils/apiResponse');
 const { normalizeText } = require('../utils/query');
 const { sanitizeUser } = require('../utils/serializers');
-const {
-  damBaoEmailSanSang,
-  datLaiMatKhau,
-  guiThuDatLaiMatKhau,
-} = require('../services/xacThucEmail');
-
 const DEFAULT_USER_ROLES = ['USER', 'NGUOI_DUNG', 'KHACH_HANG'];
+const taoMatKhauTam = () => `Cookmate@${crypto.randomBytes(6).toString('base64url')}`;
 
 const createToken = (user) => {
   return jwt.sign(
@@ -229,19 +225,38 @@ const AuthController = {
     return sendSuccess(res, 200, 'Đã đăng xuất khỏi tất cả thiết bị.');
   }),
   forgotPassword: asyncHandler(async (req, res) => {
-    const email = normalizeText(req.body.taiKhoan || req.body.email).toLowerCase();
-    await damBaoEmailSanSang();
-    const user = await db.NguoiDung.findOne({ where: { email, trangThai: 1 } });
-    if (user?.matKhau) await guiThuDatLaiMatKhau(user);
-    return sendSuccess(
-      res,
-      200,
-      'Nếu tài khoản tồn tại, Cookmate đã gửi liên kết đặt lại mật khẩu đến email đăng ký.',
-    );
-  }),
-  resetPassword: asyncHandler(async (req, res) => {
-    await datLaiMatKhau(req.body.token, req.body.matKhauMoi);
-    return sendSuccess(res, 200, 'Mật khẩu đã được đặt lại. Hãy đăng nhập lại.');
+    if (process.env.NODE_ENV === 'production')
+      return sendError(res, 403, 'Khôi phục mật khẩu trực tiếp chỉ dành cho bản trình diễn.');
+
+    const email = normalizeText(req.body.email).toLowerCase();
+    const matKhauTam = taoMatKhauTam();
+    await sequelize.transaction(async (transaction) => {
+      const user = await db.NguoiDung.findOne({
+        where: { email, trangThai: 1 },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!user?.matKhau) throw httpError(404, 'Không tìm thấy tài khoản đang hoạt động.');
+      await user.update(
+        {
+          matKhau: await bcrypt.hash(matKhauTam, 12),
+          tokenVersion: user.tokenVersion + 1,
+          ngayCapNhat: new Date(),
+        },
+        { transaction },
+      );
+      if (db.ThietBiThongBao)
+        await db.ThietBiThongBao.update(
+          { hoatDong: 0, ngayCapNhat: new Date() },
+          { where: { idNguoiDung: user.idNguoiDung }, transaction },
+        );
+    });
+
+    return sendSuccess(res, 200, 'Đã tạo mật khẩu tạm thời cho tài khoản.', {
+      email,
+      matKhauTam,
+      chiDungChoDemo: true,
+    });
   }),
 };
 

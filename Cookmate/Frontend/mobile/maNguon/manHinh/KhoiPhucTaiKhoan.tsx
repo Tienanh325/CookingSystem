@@ -2,109 +2,70 @@ import { useState } from 'react'
 import { Text, View } from 'react-native'
 import { DauTrang, ManHinh, Nut, ThongDiep, TruongNhap } from '../thanhPhan/GiaoDien'
 import { goiApi } from '../dichVu/KetNoiApi'
-import { kieuDang as s } from '../ChuDe'
+import { kieuDang as s, mauSac } from '../ChuDe'
 
 export default function KhoiPhucTaiKhoan({ navigation, route }: any) {
-  const laDatLai = route.name === 'DatLaiMatKhau'
-  const [taiKhoan, datTaiKhoan] = useState(route.params?.email || '')
-  const [token, datToken] = useState(route.params?.token || '')
-  const [matKhau, datMatKhau] = useState('')
-  const [xacNhan, datXacNhan] = useState('')
+  const [email, datEmail] = useState(route.params?.email || '')
+  const [matKhauTam, datMatKhauTam] = useState('')
   const [dangXuLy, datDangXuLy] = useState(false)
   const [loi, datLoi] = useState('')
-  const [thanhCong, datThanhCong] = useState('')
 
-  const gui = async () => {
+  const taoMatKhauTam = async () => {
     datLoi('')
-    datThanhCong('')
-    if (!laDatLai && !taiKhoan.trim()) {
+    datMatKhauTam('')
+    if (!email.trim()) {
       datLoi('Vui lòng nhập email tài khoản.')
-      return
-    }
-    if (laDatLai && matKhau !== xacNhan) {
-      datLoi('Mật khẩu xác nhận chưa khớp.')
       return
     }
     datDangXuLy(true)
     try {
-      if (laDatLai) {
-        const ketQua = await goiApi('/auth/reset-password', {
-          method: 'POST',
-          body: { token: token.trim(), matKhauMoi: matKhau },
-        })
-        datThanhCong(ketQua.message)
-      } else {
-        const ketQua = await goiApi('/auth/forgot-password', {
-          method: 'POST',
-          body: { taiKhoan: taiKhoan.trim().toLowerCase() },
-        })
-        datThanhCong(ketQua.message)
-      }
-    } catch (e: any) {
-      datLoi(e.message)
+      const ketQua = await goiApi('/auth/forgot-password', {
+        method: 'POST',
+        body: { email: email.trim().toLowerCase() },
+      })
+      datMatKhauTam(ketQua.data.matKhauTam)
+    } catch (error: any) {
+      datLoi(error.message)
     } finally {
       datDangXuLy(false)
     }
   }
 
-  const tieuDe = laDatLai ? 'Đặt lại mật khẩu' : 'Quên mật khẩu'
-
   return (
-    <ManHinh header={<DauTrang back title={tieuDe} />}>
-      <Text style={[s.title, s.serif, { marginBottom: 10 }]}>{tieuDe}</Text>
+    <ManHinh header={<DauTrang back title="Quên mật khẩu" />}>
+      <Text style={[s.title, s.serif, { marginBottom: 10 }]}>Khôi phục tài khoản</Text>
       <Text style={[s.muted, { marginBottom: 24 }]}>
-        {laDatLai
-          ? 'Tạo mật khẩu mới có ít nhất 8 ký tự.'
-          : 'Chỉ cần nhập email bạn dùng để đăng nhập. Cookmate sẽ gửi liên kết tạo mật khẩu mới đến email đó.'}
+        Nhập email đăng nhập để hệ thống tạo mật khẩu tạm thời. Chức năng này chỉ dùng cho
+        bản trình diễn bài tập lớn.
       </Text>
-      {!laDatLai && (
-        <TruongNhap
-          label="Email tài khoản"
-          value={taiKhoan}
-          onChangeText={datTaiKhoan}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-        />
-      )}
-      {laDatLai && !route.params?.token && (
-        <TruongNhap label="Mã đặt lại mật khẩu" value={token} onChangeText={datToken} />
-      )}
-      {laDatLai && (
-        <>
-          <TruongNhap
-            label="Mật khẩu mới"
-            value={matKhau}
-            onChangeText={datMatKhau}
-            secureTextEntry
-            autoComplete="new-password"
-          />
-          <TruongNhap
-            label="Xác nhận mật khẩu mới"
-            value={xacNhan}
-            onChangeText={datXacNhan}
-            secureTextEntry
-            autoComplete="new-password"
-          />
-        </>
-      )}
+      <TruongNhap
+        label="Email tài khoản"
+        value={email}
+        onChangeText={datEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        editable={!matKhauTam}
+      />
       <ThongDiep>{loi}</ThongDiep>
-      <ThongDiep success>{thanhCong}</ThongDiep>
-      {!thanhCong && (
-        <Nut
-          title={laDatLai ? 'Đặt lại mật khẩu' : 'Gửi liên kết đặt lại'}
-          busy={dangXuLy}
-          onPress={gui}
-        />
-      )}
-      {!!thanhCong && (
-        <View style={{ marginTop: 8 }}>
-          {!laDatLai && (
-            <View style={{ marginBottom: 10 }}>
-              <Nut title="Gửi lại liên kết" busy={dangXuLy} onPress={gui} />
-            </View>
-          )}
-          <Nut title="Đến trang đăng nhập" onPress={() => navigation.replace('DangNhap')} />
+      {!matKhauTam ? (
+        <Nut title="Lấy mật khẩu tạm" busy={dangXuLy} onPress={taoMatKhauTam} />
+      ) : (
+        <View style={[s.card, { marginTop: 8, gap: 12 }]}>
+          <Text style={s.muted}>Mật khẩu tạm thời của bạn:</Text>
+          <Text
+            selectable
+            style={{ color: mauSac.accent, fontSize: 22, fontWeight: '800', textAlign: 'center' }}
+          >
+            {matKhauTam}
+          </Text>
+          <Text style={s.small}>
+            Hãy đăng nhập bằng mật khẩu này và đổi mật khẩu ngay trong phần Cá nhân.
+          </Text>
+          <Nut
+            title="Đến trang đăng nhập"
+            onPress={() => navigation.replace('DangNhap', { email: email.trim().toLowerCase() })}
+          />
         </View>
       )}
     </ManHinh>

@@ -18,9 +18,9 @@ npm run dev
 
 Đăng ký và đăng nhập chỉ kiểm tra định dạng email cùng mật khẩu; không yêu cầu xác minh email và không gửi thư sau đăng ký.
 
-SMTP chỉ được dùng cho chức năng quên mật khẩu. Để gửi email đặt lại mật khẩu bằng Gmail, bật Xác minh 2 bước cho tài khoản gửi rồi tạo App Password. Trong `.env`, đặt `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_SECURE=false`, `SMTP_USER` là địa chỉ Gmail và `SMTP_PASSWORD` là App Password 16 ký tự. `EMAIL_FROM` có thể bỏ trống để dùng tài khoản gửi; `APP_PUBLIC_URL=cookmate://` mở ứng dụng từ liên kết đặt lại mật khẩu. Chạy `npm run email:verify` để kiểm tra kết nối.
-
 Push notification sử dụng Expo Push Service. Mobile đăng ký Expo push token với backend; có thể đặt `EXPO_ACCESS_TOKEN` nếu dự án bật enhanced push security.
+
+Chức năng quên mật khẩu của bản bài tập không dùng Gmail/SMTP. Ngoài production, hệ thống tạo mật khẩu tạm, chỉ trả về một lần trên màn hình và vẫn lưu mật khẩu dưới dạng băm bcrypt. Luồng này tự khóa khi `NODE_ENV=production`.
 
 API mặc định tại `http://localhost:8080/api`. Upload tại `/uploads`.
 

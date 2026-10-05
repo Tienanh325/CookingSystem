@@ -12,7 +12,6 @@
     "verify:demo": "node scripts/verify-demo.js",
     "seed:large": "node scripts/seed-large.js",
     "verify:large": "node scripts/verify-large.js",
-    "email:verify": "node scripts/verify-email.js",
     "images:recipes": "node scripts/download-recipe-images.js",
     "images:review": "node scripts/review-recipe-images.js",
     "videos:search": "node scripts/search-recipe-videos.js",
@@ -34,7 +33,6 @@
     "morgan": "^1.12.1",
     "multer": "^2.4.0",
     "mysql2": "^3.24.4",
-    "nodemailer": "^10.0.10",
     "sequelize": "^6.37.8",
     "sharp": "^0.35.4",
     "zod": "^4.6.5"

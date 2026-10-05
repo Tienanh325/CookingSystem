@@ -24,7 +24,6 @@ let connection,
   adminRole,
   userRole,
   created = false;
-let hopThuKiemThu;
 async function request(method, route, body, token) {
   const response = await fetch(base + route, {
     method,
@@ -65,12 +64,10 @@ before(async () => {
     matKhau: await bcrypt.hash('Password123!', 12),
   });
   const app = require('../src/app');
-  hopThuKiemThu = require('../src/services/guiEmail').hopThuKiemThu;
   server = app.listen(0, '127.0.0.1');
   await new Promise((r) => server.once('listening', r));
   base = `http://127.0.0.1:${server.address().port}/api`;
   admin = await login('admin@test.local');
-  const emailCount = hopThuKiemThu.length;
   for (const email of ['user@test.local', 'other@test.local']) {
     const r = await request('POST', '/auth/register', {
       hoTen: 'Test User',
@@ -83,7 +80,6 @@ before(async () => {
     if (email.startsWith('user')) user = await login(email);
     else other = await login(email);
   }
-  assert.equal(hopThuKiemThu.length, emailCount);
 });
 after(async () => {
   if (server) await new Promise((r) => server.close(r));
@@ -96,6 +92,7 @@ after(async () => {
 });
 
 test('retired authentication alternatives are unavailable', async () => {
+  assert.equal((await request('POST', '/auth/reset-password', { token: '0'.repeat(64), matKhauMoi: 'Password123!' })).status, 404);
   assert.equal((await request('GET', '/auth/methods')).status, 404);
   assert.equal((await request('POST', '/auth/otp/request', { phone: '0912345678' })).status, 404);
   assert.equal((await request('POST', '/auth/otp/verify', { challengeId: crypto.randomUUID(), code: '123456' })).status, 404);
@@ -135,49 +132,28 @@ test('legacy accounts can login without email verification', async () => {
     200,
   );
 });
-test('registration allows immediate login and password reset uses a one-time token', async () => {
-  const email = 'recovery@test.local';
+test('registration allows immediate login and demo recovery returns a temporary password', async () => {
+  const email = 'new-user@test.local';
   const registered = await request('POST', '/auth/register', {
-    hoTen: 'Recovery User',
+    hoTen: 'New User',
     email,
     matKhau: 'Original123!',
   });
   assert.equal(registered.status, 201, JSON.stringify(registered));
   assert.equal(registered.data.token, undefined);
   assert.equal(registered.data.canDangNhap, true);
-  const session = await login(email, 'Original123!');
-  const emailCount = hopThuKiemThu.length;
-  assert.equal(
-    (await request('POST', '/auth/forgot-password', { email: 'missing@test.local' })).status,
-    200,
-  );
-  assert.equal(hopThuKiemThu.length, emailCount);
-  assert.equal((await request('POST', '/auth/forgot-password', { taiKhoan: email })).status, 200);
-  const resetMail = hopThuKiemThu.findLast(
-    (item) => item.den === email && item.loai === 'PASSWORD_RESET',
-  );
-  assert.match(resetMail.duongDan, /^cookmate:\/\/dat-lai-mat-khau\?token=/);
-  assert.equal(
-    (
-      await request('POST', '/auth/reset-password', {
-        token: resetMail.token,
-        matKhauMoi: 'Replacement123!',
-      })
-    ).status,
-    200,
-  );
-  assert.equal((await request('GET', '/auth/me', undefined, session)).status, 401);
-  assert.equal(
-    (
-      await request('POST', '/auth/reset-password', {
-        token: resetMail.token,
-        matKhauMoi: 'AnotherPassword123!',
-      })
-    ).status,
-    400,
-  );
+  const oldSession = await login(email, 'Original123!');
+  assert.equal((await request('POST', '/auth/forgot-password', {})).status, 400);
+  const recovered = await request('POST', '/auth/forgot-password', { email });
+  assert.equal(recovered.status, 200, JSON.stringify(recovered));
+  assert.equal(recovered.data.chiDungChoDemo, true);
+  assert.match(recovered.data.matKhauTam, /^Cookmate@[A-Za-z0-9_-]{8}$/);
+  const storedUser = await db.NguoiDung.findOne({ where: { email } });
+  assert.notEqual(storedUser.matKhau, recovered.data.matKhauTam);
+  assert.equal(await bcrypt.compare(recovered.data.matKhauTam, storedUser.matKhau), true);
+  assert.equal((await request('GET', '/auth/me', undefined, oldSession)).status, 401);
   assert.equal((await request('POST', '/auth/login', { email, matKhau: 'Original123!' })).status, 401);
-  assert.ok(await login(email, 'Replacement123!'));
+  assert.ok(await login(email, recovered.data.matKhauTam));
 });
 test('authentication, validation and protected admin API', async () => {
   assert.equal(

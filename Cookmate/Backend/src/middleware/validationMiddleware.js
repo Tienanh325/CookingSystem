@@ -4,7 +4,6 @@ const { sendError } = require('../utils/apiResponse');
 const FIELD_LABELS = {
   hoTen: 'Họ và tên',
   email: 'Email',
-  taiKhoan: 'Email tài khoản',
   matKhau: 'Mật khẩu',
   matKhauCu: 'Mật khẩu hiện tại',
   matKhauMoi: 'Mật khẩu mới',
@@ -293,17 +292,7 @@ function validateRequest(req, res, next) {
       matKhau: z.string().min(1).max(200),
     });
   else if (path === '/auth/forgot-password')
-    schema = z
-      .object({
-        taiKhoan: z.email().max(150).transform((v) => v.toLowerCase()).optional(),
-        email: z.email().max(150).transform((v) => v.toLowerCase()).optional(),
-      })
-      .refine((value) => value.taiKhoan || value.email, {
-        message: 'Vui lòng nhập email tài khoản.',
-        path: ['taiKhoan'],
-      });
-  else if (path === '/auth/reset-password')
-    schema = z.object({ token: z.string().regex(/^[a-f0-9]{64}$/), matKhauMoi: password });
+    schema = z.object({ email: z.email().max(150).transform((v) => v.toLowerCase()) });
   else if (path === '/auth/me') schema = profile;
   else if (path === '/auth/change-password')
     schema = z.object({ matKhauCu: z.string().min(1).max(200), matKhauMoi: password });
