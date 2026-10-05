@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom'
 import {
   ChefHat,
@@ -21,7 +21,7 @@ import {
   CreditCard,
 } from 'lucide-react'
 import { useAuth } from '../context/auth'
-import useResource from '../lib/useResource'
+import { api } from '../lib/api'
 const groups = [
   ['TỔNG QUAN', [['/', 'Bảng điều khiển', LayoutDashboard]]],
   [
@@ -50,12 +50,23 @@ export default function Layout() {
   const { user, logout } = useAuth(),
     [open, setOpen] = useState(false),
     [search, setSearch] = useState(''),
-    navigate = useNavigate(),
-    unread = useResource('/thong-bao?daDoc=0&limit=1')
+    [unreadCount, setUnreadCount] = useState(0),
+    navigate = useNavigate()
+  const reloadUnread = useCallback(() => {
+    api('/thong-bao?daDoc=0&limit=1')
+      .then((result) => setUnreadCount(Number(result.meta?.totalItems || 0)))
+      .catch(() => {})
+  }, [])
   useEffect(() => {
-    const timer = window.setInterval(unread.reload, 15000)
-    return () => window.clearInterval(timer)
-  }, [unread.reload])
+    const refresh = () => reloadUnread()
+    reloadUnread()
+    const timer = window.setInterval(reloadUnread, 15000)
+    window.addEventListener('notifications-changed', refresh)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('notifications-changed', refresh)
+    }
+  }, [reloadUnread])
   return (
     <div className="admin-layout">
       {open && (
@@ -125,9 +136,9 @@ export default function Layout() {
             />
           </form>
           <div className="topbar-actions">
-            <Link className="icon-button notification-bell" to="/notifications" aria-label={`Thông báo${unread.meta?.totalItems ? `, ${unread.meta.totalItems} chưa đọc` : ''}`}>
+            <Link className="icon-button notification-bell" to="/notifications" aria-label={`Thông báo${unreadCount ? `, ${unreadCount} chưa đọc` : ''}`}>
               <Bell size={21} />
-              {!!unread.meta?.totalItems && <span>{Math.min(unread.meta.totalItems, 99)}</span>}
+              {!!unreadCount && <span>{unreadCount > 99 ? '99+' : unreadCount}</span>}
             </Link>
             <span className="divider" />
             <Link className="user-chip" to="/settings">

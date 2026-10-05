@@ -15,7 +15,7 @@ const sendSuccess = (res, statusCode = 200, message = 'OK', data = null, meta = 
   return res.status(statusCode).json(body);
 };
 
-const sendError = (res, statusCode = 500, message = 'Server error', details = null) => {
+const sendError = (res, statusCode = 500, message = 'Máy chủ đang gặp sự cố.', details = null) => {
   const body = {
     success: false,
     message,

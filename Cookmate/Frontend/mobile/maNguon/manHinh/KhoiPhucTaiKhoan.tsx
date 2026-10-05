@@ -6,7 +6,7 @@ import { kieuDang as s } from '../ChuDe'
 
 export default function KhoiPhucTaiKhoan({ navigation, route }: any) {
   const laDatLai = route.name === 'DatLaiMatKhau'
-  const [email, datEmail] = useState(route.params?.email || '')
+  const [taiKhoan, datTaiKhoan] = useState(route.params?.email || '')
   const [token, datToken] = useState(route.params?.token || '')
   const [matKhau, datMatKhau] = useState('')
   const [xacNhan, datXacNhan] = useState('')
@@ -17,6 +17,10 @@ export default function KhoiPhucTaiKhoan({ navigation, route }: any) {
   const gui = async () => {
     datLoi('')
     datThanhCong('')
+    if (!laDatLai && !taiKhoan.trim()) {
+      datLoi('Vui lòng nhập email tài khoản.')
+      return
+    }
     if (laDatLai && matKhau !== xacNhan) {
       datLoi('Mật khẩu xác nhận chưa khớp.')
       return
@@ -32,7 +36,7 @@ export default function KhoiPhucTaiKhoan({ navigation, route }: any) {
       } else {
         const ketQua = await goiApi('/auth/forgot-password', {
           method: 'POST',
-          body: { email: email.trim().toLowerCase() },
+          body: { taiKhoan: taiKhoan.trim().toLowerCase() },
         })
         datThanhCong(ketQua.message)
       }
@@ -51,13 +55,13 @@ export default function KhoiPhucTaiKhoan({ navigation, route }: any) {
       <Text style={[s.muted, { marginBottom: 24 }]}>
         {laDatLai
           ? 'Tạo mật khẩu mới có ít nhất 8 ký tự.'
-          : 'Cookmate sẽ gửi liên kết đặt lại mật khẩu nếu email tồn tại.'}
+          : 'Chỉ cần nhập email bạn dùng để đăng nhập. Cookmate sẽ gửi liên kết tạo mật khẩu mới đến email đó.'}
       </Text>
       {!laDatLai && (
         <TruongNhap
-          label="Email"
-          value={email}
-          onChangeText={datEmail}
+          label="Email tài khoản"
+          value={taiKhoan}
+          onChangeText={datTaiKhoan}
           keyboardType="email-address"
           autoCapitalize="none"
           autoComplete="email"
@@ -88,13 +92,18 @@ export default function KhoiPhucTaiKhoan({ navigation, route }: any) {
       <ThongDiep success>{thanhCong}</ThongDiep>
       {!thanhCong && (
         <Nut
-          title={laDatLai ? 'Đặt lại mật khẩu' : 'Gửi liên kết'}
+          title={laDatLai ? 'Đặt lại mật khẩu' : 'Gửi liên kết đặt lại'}
           busy={dangXuLy}
           onPress={gui}
         />
       )}
       {!!thanhCong && (
         <View style={{ marginTop: 8 }}>
+          {!laDatLai && (
+            <View style={{ marginBottom: 10 }}>
+              <Nut title="Gửi lại liên kết" busy={dangXuLy} onPress={gui} />
+            </View>
+          )}
           <Nut title="Đến trang đăng nhập" onPress={() => navigation.replace('DangNhap')} />
         </View>
       )}

@@ -216,7 +216,7 @@ const buildRecipePayload = (body, currentRecipe = null) => {
   if (Object.prototype.hasOwnProperty.call(body, 'idDanhMuc')) {
     const idDanhMuc = toPositiveInt(body.idDanhMuc);
     if (!idDanhMuc) {
-      throw createHttpError(400, 'idDanhMuc must be a positive integer');
+      throw createHttpError(400, 'Danh mục phải là một mã số nguyên dương.');
     }
     payload.idDanhMuc = idDanhMuc;
   }
@@ -263,7 +263,7 @@ const buildRecipePayload = (body, currentRecipe = null) => {
 
   if (!currentRecipe) {
     if (!payload.idDanhMuc || !payload.tenMonAn) {
-      throw createHttpError(400, 'idDanhMuc and tenMonAn are required');
+      throw createHttpError(400, 'Vui lòng nhập tên món ăn và chọn danh mục.');
     }
 
     payload.doKho = payload.doKho || 'DE';
@@ -284,7 +284,7 @@ const normalizeIngredients = (items) => {
     const donVi = normalizeText(item.donVi);
 
     if (!idNguyenLieu || !donVi) {
-      throw createHttpError(400, 'Each ingredient needs idNguyenLieu and donVi');
+      throw createHttpError(400, 'Mỗi nguyên liệu phải có tên nguyên liệu và đơn vị.');
     }
 
     let khoiLuongGram = item.khoiLuongGram === null ? null : Number(item.khoiLuongGram);
@@ -318,7 +318,7 @@ const normalizeSteps = (items) => {
     const huongDan = normalizeText(item.huongDan);
 
     if (!huongDan) {
-      throw createHttpError(400, 'Each cooking step needs huongDan');
+      throw createHttpError(400, 'Mỗi bước nấu phải có nội dung hướng dẫn.');
     }
 
     return {
@@ -341,7 +341,7 @@ const normalizeImages = (items) => {
     const duongDan = normalizeText(item.duongDan);
 
     if (!duongDan) {
-      throw createHttpError(400, 'Each image needs duongDan');
+      throw createHttpError(400, 'Mỗi hình ảnh phải có đường dẫn.');
     }
 
     return {
@@ -607,7 +607,7 @@ const MonAnController = {
     const monAn = await fetchRecipeById(req.params.id, !req.isAdminView);
 
     if (!monAn) {
-      return sendError(res, 404, 'Recipe not found');
+      return sendError(res, 404, 'Không tìm thấy công thức.');
     }
 
     if (!req.isAdminView) {
@@ -650,7 +650,7 @@ const MonAnController = {
     });
 
     if (!danhMuc) {
-      return sendError(res, 400, 'Category does not exist');
+      return sendError(res, 400, 'Danh mục không tồn tại hoặc đã bị ẩn.');
     }
 
     const transaction = await sequelize.transaction();
@@ -672,7 +672,7 @@ const MonAnController = {
     const monAn = await db.MonAn.findByPk(req.params.id);
 
     if (!monAn) {
-      return sendError(res, 404, 'Recipe not found');
+      return sendError(res, 404, 'Không tìm thấy công thức.');
     }
 
     const payload = buildRecipePayload(req.body, monAn);
@@ -686,7 +686,7 @@ const MonAnController = {
       });
 
       if (!danhMuc) {
-        return sendError(res, 400, 'Category does not exist');
+        return sendError(res, 400, 'Danh mục không tồn tại hoặc đã bị ẩn.');
       }
     }
 
@@ -716,7 +716,7 @@ const MonAnController = {
     const monAn = await db.MonAn.findByPk(req.params.id);
 
     if (!monAn) {
-      return sendError(res, 404, 'Recipe not found');
+      return sendError(res, 404, 'Không tìm thấy công thức.');
     }
 
     await sequelize.transaction(async (transaction) => {

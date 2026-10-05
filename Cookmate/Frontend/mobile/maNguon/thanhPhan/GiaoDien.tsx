@@ -14,6 +14,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons'
 import { useNavigation } from '@react-navigation/native'
 import { mauSac, kieuDang as s } from '../ChuDe'
 import { duongDanAnh } from '../dichVu/KetNoiApi'
+import { useXacThuc } from '../nguCanh/NguCanhXacThuc'
 export function BieuTuong({ name, size = 21, color = mauSac.muted, ...props }: any) {
   return <Ionicons name={name} size={size} color={color} {...props} />
 }
@@ -115,6 +116,7 @@ export function ManHinh({
 }
 export function DauTrang({ title, back = false, notifications = false }: any) {
   const navigation = useNavigation<any>()
+  const { soThongBaoChuaDoc = 0 } = useXacThuc() || {}
   return (
     <View style={cucBo.header}>
       {back ? (
@@ -152,11 +154,19 @@ export function DauTrang({ title, back = false, notifications = false }: any) {
       {notifications && (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Thông báo"
+          accessibilityLabel={`Thông báo${soThongBaoChuaDoc ? `, ${soThongBaoChuaDoc} chưa đọc` : ''}`}
           hitSlop={10}
           onPress={() => navigation.navigate('ThongBao')}
+          style={cucBo.notificationButton}
         >
           <BieuTuong name="notifications-outline" color={mauSac.ink} />
+          {soThongBaoChuaDoc > 0 && (
+            <View style={cucBo.notificationBadge}>
+              <Text style={cucBo.notificationBadgeText}>
+                {soThongBaoChuaDoc > 99 ? '99+' : soThongBaoChuaDoc}
+              </Text>
+            </View>
+          )}
         </Pressable>
       )}
     </View>
@@ -392,6 +402,30 @@ const cucBo = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: mauSac.border,
     backgroundColor: mauSac.background,
+  },
+  notificationButton: {
+    position: 'relative',
+    padding: 5,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -3,
+    right: -5,
+    minWidth: 17,
+    height: 17,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    backgroundColor: mauSac.red,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: mauSac.background,
+  },
+  notificationBadgeText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800',
+    lineHeight: 12,
   },
   foodImage: { width: '100%', height: 200, backgroundColor: '#f6eadd' },
   foodPlaceholder: { alignItems: 'center', justifyContent: 'center' },

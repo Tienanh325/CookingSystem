@@ -3,8 +3,18 @@ const { ValidationError, UniqueConstraintError, ForeignKeyConstraintError } = re
 
 const { sendError } = require('../utils/apiResponse');
 
+const multerMessages = {
+  LIMIT_PART_COUNT: 'Dữ liệu tải lên có quá nhiều phần.',
+  LIMIT_FILE_SIZE: 'Tệp tải lên vượt quá dung lượng cho phép.',
+  LIMIT_FILE_COUNT: 'Số lượng tệp tải lên vượt quá giới hạn.',
+  LIMIT_FIELD_KEY: 'Tên trường tải lên quá dài.',
+  LIMIT_FIELD_VALUE: 'Nội dung trường tải lên quá dài.',
+  LIMIT_FIELD_COUNT: 'Số lượng trường tải lên vượt quá giới hạn.',
+  LIMIT_UNEXPECTED_FILE: 'Trường tệp tải lên không hợp lệ.',
+};
+
 const notFound = (req, res) => {
-  return sendError(res, 404, `Route ${req.method} ${req.originalUrl} not found`);
+  return sendError(res, 404, `Không tìm thấy đường dẫn ${req.method} ${req.originalUrl}.`);
 };
 
 const errorHandler = (error, req, res, next) => {
@@ -16,8 +26,8 @@ const errorHandler = (error, req, res, next) => {
     return sendError(
       res,
       409,
-      'Duplicate data',
-      error.errors.map((item) => item.message),
+      'Thông tin này đã tồn tại.',
+      error.errors.map(() => 'Vui lòng kiểm tra lại trường dữ liệu bị trùng.'),
     );
   }
 
@@ -25,17 +35,17 @@ const errorHandler = (error, req, res, next) => {
     return sendError(
       res,
       400,
-      'Invalid data',
-      error.errors.map((item) => item.message),
+      'Dữ liệu không hợp lệ.',
+      error.errors.map(() => 'Vui lòng kiểm tra lại thông tin đã nhập.'),
     );
   }
 
   if (error instanceof ForeignKeyConstraintError) {
-    return sendError(res, 400, 'Related data does not exist or is still in use');
+    return sendError(res, 400, 'Dữ liệu liên quan không tồn tại hoặc vẫn đang được sử dụng.');
   }
 
   if (error instanceof multer.MulterError) {
-    return sendError(res, 400, error.message);
+    return sendError(res, 400, multerMessages[error.code] || 'Tệp tải lên không hợp lệ.');
   }
 
   const status = error.statusCode || error.status || 500;

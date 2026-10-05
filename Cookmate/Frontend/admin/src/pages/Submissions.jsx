@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { api } from '../lib/api'
-import { Alert, Button, PageTitle, ResourceState } from '../components/ui'
+import { Eye } from 'lucide-react'
+import { api, imageUrl } from '../lib/api'
+import { Alert, Button, Modal, PageTitle, ResourceState } from '../components/ui'
 
 export default function Submissions() {
   const [items, setItems] = useState([])
@@ -8,15 +9,29 @@ export default function Submissions() {
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState('')
   const [reasons, setReasons] = useState({})
+  const [detail, setDetail] = useState(null)
+  const [detailLoading, setDetailLoading] = useState(false)
 
   const load = () => {
-    setLoading(true)
     api('/admin/mon-an?trangThaiDuyet=CHO_DUYET&limit=100')
       .then((result) => setItems(result.data))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }
   useEffect(load, [])
+
+  async function openDetail(item) {
+    setDetailLoading(true)
+    setError('')
+    try {
+      const result = await api(`/admin/mon-an/${item.idMonAn}`)
+      setDetail(result.data)
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setDetailLoading(false)
+    }
+  }
 
   async function review(item, decision) {
     setBusy(item.idMonAn)
@@ -30,6 +45,7 @@ export default function Submissions() {
         },
       })
       setItems((current) => current.filter((value) => value.idMonAn !== item.idMonAn))
+      if (detail?.idMonAn === item.idMonAn) setDetail(null)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -56,6 +72,10 @@ export default function Submissions() {
               <span className="badge">Chờ duyệt</span>
             </div>
             <p>{item.moTa || 'Không có mô tả.'}</p>
+            <Button variant="secondary" disabled={detailLoading} onClick={() => openDetail(item)}>
+              <Eye size={17} />
+              {detailLoading ? 'Đang tải…' : 'Xem đầy đủ bài đăng'}
+            </Button>
             <textarea
               aria-label={`Lý do từ chối ${item.tenMonAn}`}
               rows="2"
@@ -80,6 +100,48 @@ export default function Submissions() {
           </section>
         ))}
       </div>
+      {detail && (
+        <Modal title={`Chi tiết: ${detail.tenMonAn}`} onClose={() => setDetail(null)} busy={busy === detail.idMonAn} wide>
+          <div className="submission-detail">
+            {(detail.anhDaiDien || detail.hinhAnhs?.[0]?.duongDan) && (
+              <img src={imageUrl(detail.anhDaiDien || detail.hinhAnhs[0].duongDan)} alt={detail.tenMonAn} />
+            )}
+            <div className="submission-meta">
+              <span>Danh mục: <strong>{detail.danhMuc?.tenDanhMuc || '—'}</strong></span>
+              <span>Tác giả: <strong>{detail.tacGia?.hoTen || 'Người dùng Cookmate'}</strong></span>
+              <span>Khẩu phần: <strong>{detail.khauPhan} người</strong></span>
+              <span>Thời gian: <strong>{detail.tongThoiGian || 0} phút</strong></span>
+            </div>
+            <section>
+              <h3>Mô tả</h3>
+              <p>{detail.moTa || 'Không có mô tả.'}</p>
+            </section>
+            <section>
+              <h3>Nguyên liệu</h3>
+              <ul>{detail.nguyenLieus?.map((item) => (
+                <li key={item.idNguyenLieu}>{item.tenNguyenLieu}: <strong>{item.MonAnNguyenLieu?.soLuong} {item.MonAnNguyenLieu?.donVi}</strong></li>
+              ))}</ul>
+            </section>
+            <section>
+              <h3>Các bước thực hiện</h3>
+              <ol>{detail.buocNaus?.map((step, index) => (
+                <li key={step.idBuocNau || index}><strong>{step.tieuDe || `Bước ${index + 1}`}:</strong> {step.huongDan}{step.thoiGian ? ` (${step.thoiGian} phút)` : ''}</li>
+              ))}</ol>
+            </section>
+            <textarea
+              aria-label={`Lý do từ chối ${detail.tenMonAn}`}
+              rows="3"
+              placeholder="Lý do từ chối nếu công thức cần chỉnh sửa"
+              value={reasons[detail.idMonAn] || ''}
+              onChange={(event) => setReasons((current) => ({ ...current, [detail.idMonAn]: event.target.value }))}
+            />
+            <div className="form-actions">
+              <Button disabled={busy === detail.idMonAn || !reasons[detail.idMonAn]?.trim()} variant="secondary" onClick={() => review(detail, 'TU_CHOI')}>Từ chối</Button>
+              <Button disabled={busy === detail.idMonAn} onClick={() => review(detail, 'DUYET')}>Duyệt công thức</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </>
   )
 }

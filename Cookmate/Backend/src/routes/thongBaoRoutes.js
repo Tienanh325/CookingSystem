@@ -12,6 +12,7 @@ router.post('/thiet-bi', ThongBaoController.registerDevice);
 router.delete('/thiet-bi', ThongBaoController.unregisterDevices);
 router.patch('/read-all', ThongBaoController.markAllRead);
 router.patch('/:id/read', ThongBaoController.markRead);
+router.delete('/:id', authorizeAdmin, ThongBaoController.remove);
 router.post('/', authorizeAdmin, ThongBaoController.create);
 
 module.exports = router;

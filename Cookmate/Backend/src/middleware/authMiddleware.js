@@ -55,14 +55,14 @@ const authenticate = asyncHandler(async (req, res, next) => {
   const token = getToken(req);
 
   if (!token) {
-    return sendError(res, 401, 'Missing authorization token');
+    return sendError(res, 401, 'Vui lòng đăng nhập để tiếp tục.');
   }
 
   try {
     const user = await loadUserFromToken(token);
 
     if (!user) {
-      return sendError(res, 401, 'Invalid or expired session');
+      return sendError(res, 401, 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.');
     }
 
     req.user = user;
@@ -77,7 +77,7 @@ const authenticate = asyncHandler(async (req, res, next) => {
   } catch (error) {
     if (!['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'].includes(error.name))
       return next(error);
-    return sendError(res, 401, 'Invalid or expired session');
+    return sendError(res, 401, 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.');
   }
 });
 
@@ -112,7 +112,7 @@ const authorize =
   (...allowedRoles) =>
   (req, res, next) => {
     if (!req.user || !req.auth) {
-      return sendError(res, 401, 'Authentication required');
+      return sendError(res, 401, 'Vui lòng đăng nhập để tiếp tục.');
     }
 
     const normalizedAllowedRoles = allowedRoles.map(normalizeRole);
@@ -122,16 +122,16 @@ const authorize =
       return next();
     }
 
-    return sendError(res, 403, 'You do not have permission to access this resource');
+    return sendError(res, 403, 'Bạn không có quyền truy cập chức năng này.');
   };
 
 const authorizeAdmin = (req, res, next) => {
   if (!req.user || !req.auth) {
-    return sendError(res, 401, 'Authentication required');
+    return sendError(res, 401, 'Vui lòng đăng nhập để tiếp tục.');
   }
 
   if (!req.auth.isAdmin) {
-    return sendError(res, 403, 'Admin permission required');
+    return sendError(res, 403, 'Chức năng này yêu cầu quyền quản trị viên.');
   }
 
   return next();

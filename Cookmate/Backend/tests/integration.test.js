@@ -152,7 +152,7 @@ test('registration allows immediate login and password reset uses a one-time tok
     200,
   );
   assert.equal(hopThuKiemThu.length, emailCount);
-  assert.equal((await request('POST', '/auth/forgot-password', { email })).status, 200);
+  assert.equal((await request('POST', '/auth/forgot-password', { taiKhoan: email })).status, 200);
   const resetMail = hopThuKiemThu.findLast(
     (item) => item.den === email && item.loai === 'PASSWORD_RESET',
   );
@@ -410,6 +410,13 @@ test('users submit owned recipe drafts for admin moderation', async () => {
     (await request('POST', `/mon-an/cua-toi/${draft.data.idMonAn}/gui-duyet`, {}, user)).status,
     200,
   );
+  const ownerPreview = await request('GET', `/mon-an/cua-toi/${draft.data.idMonAn}`, undefined, user);
+  assert.equal(ownerPreview.status, 200, JSON.stringify(ownerPreview));
+  assert.equal(ownerPreview.data.nguyenLieus.length, 1);
+  assert.equal(ownerPreview.data.buocNaus.length, 1);
+  const adminPreview = await request('GET', `/admin/mon-an/${draft.data.idMonAn}`, undefined, admin);
+  assert.equal(adminPreview.status, 200, JSON.stringify(adminPreview));
+  assert.equal(adminPreview.data.trangThaiDuyet, 'CHO_DUYET');
   assert.equal((await request('GET', `/mon-an/${draft.data.idMonAn}`)).status, 404);
   const approved = await request(
     'PATCH',
@@ -559,9 +566,25 @@ test('last admin protection and disabled-role authentication', async () => {
     (await request('PATCH', `/vai-tro/${adminRole.idVaiTro}`, { trangThai: 0 }, admin)).status,
     409,
   );
+  assert.equal((await request('DELETE', `/nguoi-dung/${me.idNguoiDung}`, undefined, admin)).status, 409);
+  assert.equal((await request('DELETE', `/vai-tro/${adminRole.idVaiTro}`, undefined, admin)).status, 409);
+  assert.equal((await request('DELETE', `/vai-tro/${userRole.idVaiTro}`, undefined, admin)).status, 409);
   await userRole.update({ trangThai: 0 });
   assert.equal((await request('GET', '/auth/me', undefined, user)).status, 401);
   await userRole.update({ trangThai: 1 });
+});
+test('admin delete actions safely disable users and custom roles', async () => {
+  const removableRole = await request('POST', '/vai-tro', { tenVaiTro: 'TEMP_ROLE', moTa: 'Temporary' }, admin);
+  assert.equal(removableRole.status, 201, JSON.stringify(removableRole));
+  assert.equal((await request('DELETE', `/vai-tro/${removableRole.data.idVaiTro}`, undefined, admin)).status, 200);
+  assert.equal((await db.VaiTro.findByPk(removableRole.data.idVaiTro)).trangThai, 0);
+
+  const email = 'delete-me@test.local';
+  assert.equal((await request('POST', '/auth/register', { hoTen: 'Delete Me', email, matKhau: 'Password123!' })).status, 201);
+  const removableUser = await db.NguoiDung.findOne({ where: { email } });
+  assert.equal((await request('DELETE', `/nguoi-dung/${removableUser.idNguoiDung}`, undefined, admin)).status, 200);
+  assert.equal((await db.NguoiDung.findByPk(removableUser.idNguoiDung)).trangThai, 0);
+  assert.equal((await request('POST', '/auth/login', { email, matKhau: 'Password123!' })).status, 401);
 });
 test('notification recipient validation and read ownership', async () => {
   const unreadBefore = (await request('GET', '/thong-bao?daDoc=0', undefined, user)).data.length;
@@ -587,6 +610,12 @@ test('notification recipient validation and read ownership', async () => {
   const n = r.data.thongBao.idThongBao;
   assert.equal((await request('PATCH', `/thong-bao/${n}/read`, {}, user)).status, 200);
   assert.equal((await request('GET', '/thong-bao?daDoc=0', undefined, user)).data.length, unreadBefore);
+  assert.equal((await request('DELETE', `/thong-bao/${n}`, undefined, user)).status, 403);
+  assert.equal((await request('DELETE', `/thong-bao/${n}`, undefined, admin)).status, 200);
+  assert.equal(await db.ThongBao.findByPk(n), null);
+  assert.equal(await db.ThongBaoNguoiDung.count({ where: { idThongBao: n } }), 0);
+  const paymentNotification = await db.ThongBao.findOne({ where: { loai: 'THANH_TOAN_THANH_CONG' } });
+  assert.equal((await request('DELETE', `/thong-bao/${paymentNotification.idThongBao}`, undefined, admin)).status, 409);
 });
 test('registered devices receive real Expo push payloads and can be disabled', async () => {
   const pushToken = 'ExponentPushToken[test-user-device-123]';

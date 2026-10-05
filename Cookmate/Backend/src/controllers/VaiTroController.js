@@ -41,4 +41,18 @@ module.exports = {
     });
     return sendSuccess(res, 200, 'Đã cập nhật', role);
   }),
+  remove: asyncHandler(async (req, res) => {
+    await permissions(req, async ({ transaction, roles, users }) => {
+      const role = roles.find((item) => item.idVaiTro === Number(req.params.id));
+      if (!role) throw error(404, 'Vai trò không tồn tại.');
+      if (isAdminRole(role.tenVaiTro) || role.tenVaiTro === 'USER')
+        throw error(409, 'Không thể xóa vai trò hệ thống ADMIN hoặc USER.');
+      await role.update({ trangThai: 0 }, { transaction });
+      const affected = users.filter((user) => user.idVaiTro === role.idVaiTro && user.trangThai === 1);
+      for (const user of affected)
+        await user.update({ tokenVersion: user.tokenVersion + 1, ngayCapNhat: new Date() }, { transaction });
+      await audit(req, 'DELETE', 'VaiTro', role.idVaiTro, transaction);
+    });
+    return sendSuccess(res, 200, 'Đã xóa/ẩn vai trò.');
+  }),
 };

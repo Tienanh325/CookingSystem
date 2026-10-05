@@ -10,5 +10,6 @@ router.use(authenticate, authorizeAdmin);
 router.get('/', NguoiDungController.list);
 router.get('/:id', NguoiDungController.detail);
 router.patch('/:id', NguoiDungController.update);
+router.delete('/:id', NguoiDungController.remove);
 
 module.exports = router;

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Send, Bell } from 'lucide-react'
+import { Send, Bell, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { api, date } from '../lib/api'
 import useResource from '../lib/useResource'
@@ -18,21 +18,35 @@ export default function Notifications() {
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [success, setSuccess] = useState(''),
+    [deletePending, setDeletePending] = useState(null),
     [everyone, setEveryone] = useState(true),
     r = useResource(`/admin/thong-bao?page=${page}&limit=${limit}`),
     inbox = useResource('/thong-bao?limit=50')
-  const paymentRequests = (inbox.data || []).filter(
-    (item) => item.thongBao?.loai === 'YEU_CAU_THANH_TOAN',
-  )
+  const adminInbox = inbox.data || []
+  const unreadCount = adminInbox.filter((item) => !item.daDoc).length
 
   async function openNotification(item) {
     try {
       if (!item.daDoc)
         await api(`/thong-bao/${item.idThongBao}/read`, { method: 'PATCH', body: {} })
       inbox.reload()
-      navigate(item.thongBao?.duongDan || '/payments')
+      window.dispatchEvent(new Event('notifications-changed'))
+      if (item.thongBao?.duongDan) navigate(item.thongBao.duongDan)
     } catch (err) {
       setError(err.message)
+    }
+  }
+  async function markAllRead() {
+    setBusy(true)
+    setError('')
+    try {
+      await api('/thong-bao/read-all', { method: 'PATCH', body: {} })
+      inbox.reload()
+      window.dispatchEvent(new Event('notifications-changed'))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
     }
   }
   async function submit(e) {
@@ -56,6 +70,24 @@ export default function Notifications() {
       )
       form.reset()
       r.reload()
+      window.dispatchEvent(new Event('notifications-changed'))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function removeNotification() {
+    setBusy(true)
+    setError('')
+    setSuccess('')
+    try {
+      await api(`/thong-bao/${deletePending.idThongBao}`, { method: 'DELETE' })
+      setSuccess('Đã xóa thông báo khỏi danh sách đã gửi.')
+      setDeletePending(null)
+      r.reload()
+      inbox.reload()
+      window.dispatchEvent(new Event('notifications-changed'))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -71,13 +103,16 @@ export default function Notifications() {
       <section className="panel admin-inbox">
         <div className="panel-heading">
           <div>
-            <h2>Yêu cầu thanh toán cần xử lý</h2>
-            <p>Bấm vào thông báo để mở đúng giao dịch trong trang quản lý mua gói.</p>
+            <h2>Thông báo dành cho quản trị viên</h2>
+            <p>Thông báo giao dịch sẽ mở đúng yêu cầu cần xử lý; các tin khác được đánh dấu đã đọc ngay khi bấm.</p>
           </div>
-          <Bell size={20} />
+          <div className="panel-heading-actions">
+            <Button variant="secondary" disabled={busy || !unreadCount} onClick={markAllRead}>Đánh dấu tất cả đã đọc</Button>
+            <Bell size={20} />
+          </div>
         </div>
-        <ResourceState {...inbox} empty={!paymentRequests.length} reload={inbox.reload} />
-        {paymentRequests.map((item) => (
+        <ResourceState {...inbox} empty={!adminInbox.length} reload={inbox.reload} />
+        {adminInbox.map((item) => (
           <button
             type="button"
             key={`${item.idThongBao}-${item.idNguoiDung}`}
@@ -149,7 +184,14 @@ export default function Notifications() {
           <ResourceState {...r} empty={!r.data?.length} reload={r.reload} />
           {r.data?.map((item) => (
             <article key={item.idThongBao} className="notification-item">
-              <h3>{item.tieuDe}</h3>
+              <div className="notification-title-row">
+                <h3>{item.tieuDe}</h3>
+                {!['YEU_CAU_THANH_TOAN', 'THANH_TOAN_THANH_CONG', 'THANH_TOAN_TU_CHOI'].includes(item.loai) && (
+                  <button className="icon-button danger" aria-label={`Xóa ${item.tieuDe}`} onClick={() => setDeletePending(item)}>
+                    <Trash2 size={17} />
+                  </button>
+                )}
+              </div>
               <p>{item.noiDung}</p>
               <small>
                 {date(item.ngayTao)} · {item.recipients || 0} người nhận ·{' '}
@@ -166,6 +208,13 @@ export default function Notifications() {
           />
         </section>
       </div>
+      {deletePending && (
+        <div className="confirm-bar" role="dialog" aria-label="Xác nhận xóa thông báo">
+          <span>Xóa thông báo “{deletePending.tieuDe}”?</span>
+          <Button variant="secondary" disabled={busy} onClick={() => setDeletePending(null)}>Hủy</Button>
+          <Button variant="danger" disabled={busy} onClick={removeNotification}>{busy ? 'Đang xóa…' : 'Xóa'}</Button>
+        </div>
+      )}
     </>
   )
 }

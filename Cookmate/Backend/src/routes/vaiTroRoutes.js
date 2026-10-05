@@ -10,5 +10,6 @@ router.use(authenticate, authorizeAdmin);
 router.get('/', VaiTroController.list);
 router.post('/', VaiTroController.create);
 router.patch('/:id', VaiTroController.update);
+router.delete('/:id', VaiTroController.remove);
 
 module.exports = router;

@@ -31,6 +31,7 @@ const configs = {
       ['trangThai', 'Trạng thái'],
     ],
     create: true,
+    deletable: true,
   },
   ingredients: {
     title: 'Nguyên liệu',
@@ -57,6 +58,7 @@ const configs = {
       ['trangThai', 'Trạng thái'],
     ],
     create: true,
+    deletable: true,
   },
   users: {
     title: 'Người dùng',
@@ -74,6 +76,7 @@ const configs = {
       ['vaiTro.tenVaiTro', 'Vai trò'],
       ['trangThai', 'Trạng thái'],
     ],
+    deletable: true,
   },
   roles: {
     title: 'Vai trò',
@@ -91,6 +94,7 @@ const configs = {
       ['trangThai', 'Trạng thái'],
     ],
     create: true,
+    deletable: true,
   },
   comments: {
     title: 'Bình luận',
@@ -146,6 +150,7 @@ export default function Records({ kind }) {
     [q, setQ] = useState(''),
     [edit, setEdit] = useState(null),
     [confirm, setConfirm] = useState(null),
+    [deleteConfirm, setDeleteConfirm] = useState(null),
     [error, setError] = useState(''),
     [formError, setFormError] = useState(''),
     [busy, setBusy] = useState(false),
@@ -197,6 +202,19 @@ export default function Records({ kind }) {
     } finally {
       setBusy(false)
       setConfirm(null)
+    }
+  }
+  async function deleteRow() {
+    setBusy(true)
+    setError('')
+    try {
+      await api(`${c.path}/${deleteConfirm[c.id]}`, { method: 'DELETE' })
+      r.reload()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+      setDeleteConfirm(null)
     }
   }
   return (
@@ -291,6 +309,15 @@ export default function Records({ kind }) {
                               <Eye size={17} />
                             )}
                           </button>
+                          {c.deletable && (
+                            <button
+                              className="icon-button danger"
+                              aria-label="Xóa"
+                              onClick={() => setDeleteConfirm(row)}
+                            >
+                              <Trash2 size={17} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     )}
@@ -393,6 +420,20 @@ export default function Records({ kind }) {
             <Button disabled={busy} onClick={action}>
               {busy ? 'Đang xử lý…' : 'Xác nhận'}
             </Button>
+          </div>
+        </Modal>
+      )}
+      {deleteConfirm && (
+        <Modal title="Xác nhận xóa" onClose={() => setDeleteConfirm(null)} busy={busy}>
+          <p>
+            Bạn muốn xóa “{deleteConfirm[c.name] || `#${deleteConfirm[c.id]}`}” khỏi trạng thái hoạt động?
+          </p>
+          <Alert>
+            Dữ liệu được xóa an toàn bằng cách ẩn/khóa để không làm hỏng các công thức, giao dịch hoặc lịch sử đã liên kết.
+          </Alert>
+          <div className="form-actions">
+            <Button variant="secondary" disabled={busy} onClick={() => setDeleteConfirm(null)}>Quay lại</Button>
+            <Button variant="danger" disabled={busy} onClick={deleteRow}>{busy ? 'Đang xóa…' : 'Xóa'}</Button>
           </div>
         </Modal>
       )}

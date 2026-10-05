@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 import { DauTrang, ManHinh, Nut, ThongDiep, TruongNhap, TrangThai } from '../thanhPhan/GiaoDien'
 import useTaiNguyen from '../moc/useTaiNguyen'
@@ -16,6 +16,15 @@ const blank = {
   buocNaus: [{ huongDan: '', thoiGian: '0' }],
 }
 
+const normalizeSearch = (value: string) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim()
+
 export default function DangCongThuc({ navigation, route }) {
   const id = route.params?.id
   const categories = useTaiNguyen('/danh-muc?limit=100')
@@ -24,6 +33,22 @@ export default function DangCongThuc({ navigation, route }) {
   const [loading, setLoading] = useState(Boolean(id))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [categorySearch, setCategorySearch] = useState('')
+  const [ingredientSearch, setIngredientSearch] = useState('')
+  const filteredCategories = useMemo(() => {
+    const query = normalizeSearch(categorySearch)
+    if (!query) return categories.data || []
+    return (categories.data || []).filter((item) =>
+      normalizeSearch(item.tenDanhMuc).includes(query),
+    )
+  }, [categorySearch, categories.data])
+  const filteredIngredients = useMemo(() => {
+    const query = normalizeSearch(ingredientSearch)
+    if (!query) return ingredients.data || []
+    return (ingredients.data || []).filter((item) =>
+      normalizeSearch(item.tenNguyenLieu).includes(query),
+    )
+  }, [ingredientSearch, ingredients.data])
 
   useEffect(() => {
     if (!id) return
@@ -114,8 +139,17 @@ export default function DangCongThuc({ navigation, route }) {
       <ThongDiep>{error}</ThongDiep>
       <TruongNhap label="Tên món ăn" value={form.tenMonAn} onChangeText={(v) => update('tenMonAn', v)} />
       <Text style={[s.label, { marginBottom: 8 }]}>Danh mục</Text>
+      <TruongNhap
+        label="Tìm kiếm danh mục"
+        placeholder="Nhập tên danh mục"
+        value={categorySearch}
+        onChangeText={setCategorySearch}
+        autoCapitalize="none"
+        autoCorrect={false}
+        returnKeyType="search"
+      />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 18 }}>
-        {categories.data?.map((item) => (
+        {filteredCategories.map((item) => (
           <Pressable
             key={item.idDanhMuc}
             onPress={() => update('idDanhMuc', String(item.idDanhMuc))}
@@ -127,6 +161,9 @@ export default function DangCongThuc({ navigation, route }) {
           </Pressable>
         ))}
       </ScrollView>
+      {!!categorySearch.trim() && !filteredCategories.length && !categories.loading && (
+        <Text style={[s.muted, { marginBottom: 14 }]}>Không tìm thấy danh mục phù hợp.</Text>
+      )}
       <TruongNhap label="Mô tả" value={form.moTa} onChangeText={(v) => update('moTa', v)} multiline />
       <View style={[s.row, { gap: 10 }]}> 
         <TruongNhap label="Khẩu phần" value={form.khauPhan} onChangeText={(v) => update('khauPhan', v)} keyboardType="number-pad" style={{ flex: 1 }} />
@@ -134,8 +171,17 @@ export default function DangCongThuc({ navigation, route }) {
       </View>
       <TruongNhap label="Nấu (phút)" value={form.thoiGianNau} onChangeText={(v) => update('thoiGianNau', v)} keyboardType="number-pad" />
       <Text style={[s.heading, { marginTop: 12, marginBottom: 8 }]}>Nguyên liệu</Text>
+      <TruongNhap
+        label="Tìm kiếm nguyên liệu"
+        placeholder="Nhập tên nguyên liệu, ví dụ: cà chua"
+        value={ingredientSearch}
+        onChangeText={setIngredientSearch}
+        autoCapitalize="none"
+        autoCorrect={false}
+        returnKeyType="search"
+      />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-        {ingredients.data?.map((item) => {
+        {filteredIngredients.map((item) => {
           const active = form.nguyenLieus.some((row) => row.idNguyenLieu === item.idNguyenLieu)
           return (
             <Pressable key={item.idNguyenLieu} onPress={() => toggleIngredient(item)} style={[s.chip, active && s.chipActive]}>
@@ -144,6 +190,9 @@ export default function DangCongThuc({ navigation, route }) {
           )
         })}
       </ScrollView>
+      {!!ingredientSearch.trim() && !filteredIngredients.length && !ingredients.loading && (
+        <Text style={[s.muted, { marginBottom: 14 }]}>Không tìm thấy nguyên liệu phù hợp.</Text>
+      )}
       {form.nguyenLieus.map((row, index) => {
         const item = ingredients.data?.find((value) => value.idNguyenLieu === row.idNguyenLieu)
         return (

@@ -76,11 +76,11 @@ const AuthController = {
     const soDienThoai = normalizeText(req.body.soDienThoai);
 
     if (!hoTen || !email || !matKhau) {
-      return sendError(res, 400, 'hoTen, email and matKhau are required');
+      return sendError(res, 400, 'Vui lòng nhập đầy đủ họ tên, email và mật khẩu.');
     }
 
-    if (matKhau.length < 6) {
-      return sendError(res, 400, 'matKhau must have at least 6 characters');
+    if (matKhau.length < 8) {
+      return sendError(res, 400, 'Mật khẩu phải có ít nhất 8 ký tự.');
     }
 
     const existedUser = await db.NguoiDung.findOne({
@@ -90,7 +90,7 @@ const AuthController = {
     });
 
     if (existedUser) {
-      return sendError(res, 409, 'Email already exists');
+      return sendError(res, 409, 'Email này đã được sử dụng.');
     }
 
     const role = await findOrCreateDefaultRole();
@@ -128,7 +128,7 @@ const AuthController = {
     const matKhau = String(req.body.matKhau || '');
 
     if (!email || !matKhau) {
-      return sendError(res, 400, 'email and matKhau are required');
+      return sendError(res, 400, 'Vui lòng nhập email và mật khẩu.');
     }
 
     const user = await db.NguoiDung.findOne({
@@ -145,13 +145,13 @@ const AuthController = {
     });
 
     if (!user || user.trangThai !== 1 || user.vaiTro?.trangThai !== 1) {
-      return sendError(res, 401, 'Invalid email or password');
+      return sendError(res, 401, 'Email hoặc mật khẩu không đúng.');
     }
 
     const passwordMatched = user.matKhau && (await bcrypt.compare(matKhau, user.matKhau));
 
     if (!passwordMatched) {
-      return sendError(res, 401, 'Invalid email or password');
+      return sendError(res, 401, 'Email hoặc mật khẩu không đúng.');
     }
 
     return sendSuccess(res, 200, 'Login successfully', buildAuthPayload(user));
@@ -172,7 +172,7 @@ const AuthController = {
     });
 
     if (Object.keys(payload).length === 0) {
-      return sendError(res, 400, 'No valid fields to update');
+      return sendError(res, 400, 'Không có thông tin hợp lệ để cập nhật.');
     }
 
     payload.ngayCapNhat = new Date();
@@ -187,17 +187,17 @@ const AuthController = {
     const matKhauMoi = String(req.body.matKhauMoi || '');
 
     if (!matKhauCu || !matKhauMoi) {
-      return sendError(res, 400, 'matKhauCu and matKhauMoi are required');
+      return sendError(res, 400, 'Vui lòng nhập mật khẩu hiện tại và mật khẩu mới.');
     }
 
-    if (matKhauMoi.length < 6) {
-      return sendError(res, 400, 'matKhauMoi must have at least 6 characters');
+    if (matKhauMoi.length < 8) {
+      return sendError(res, 400, 'Mật khẩu mới phải có ít nhất 8 ký tự.');
     }
 
     const passwordMatched = req.user.matKhau && (await bcrypt.compare(matKhauCu, req.user.matKhau));
 
     if (!passwordMatched) {
-      return sendError(res, 400, 'Current password is incorrect');
+      return sendError(res, 400, 'Mật khẩu hiện tại không đúng.');
     }
 
     await sequelize.transaction(async (transaction) => {
@@ -229,14 +229,14 @@ const AuthController = {
     return sendSuccess(res, 200, 'Đã đăng xuất khỏi tất cả thiết bị.');
   }),
   forgotPassword: asyncHandler(async (req, res) => {
-    const email = normalizeText(req.body.email).toLowerCase();
+    const email = normalizeText(req.body.taiKhoan || req.body.email).toLowerCase();
     await damBaoEmailSanSang();
     const user = await db.NguoiDung.findOne({ where: { email, trangThai: 1 } });
     if (user?.matKhau) await guiThuDatLaiMatKhau(user);
     return sendSuccess(
       res,
       200,
-      'Nếu email tồn tại, Cookmate đã gửi liên kết đặt lại mật khẩu.',
+      'Nếu tài khoản tồn tại, Cookmate đã gửi liên kết đặt lại mật khẩu đến email đăng ký.',
     );
   }),
   resetPassword: asyncHandler(async (req, res) => {

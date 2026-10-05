@@ -66,4 +66,17 @@ module.exports = {
       sanitizeUser(await db.NguoiDung.findByPk(id, { include })),
     );
   }),
+  remove: asyncHandler(async (req, res) => {
+    await permissions(req, async ({ transaction, users }) => {
+      const user = users.find((item) => item.idNguoiDung === Number(req.params.id));
+      if (!user) throw error(404, 'Không tìm thấy người dùng.');
+      if (user.trangThai === 0) return;
+      await user.update(
+        { trangThai: 0, tokenVersion: user.tokenVersion + 1, ngayCapNhat: new Date() },
+        { transaction },
+      );
+      await audit(req, 'DELETE', 'NguoiDung', user.idNguoiDung, transaction);
+    });
+    return sendSuccess(res, 200, 'Đã xóa/khóa tài khoản người dùng.');
+  }),
 };

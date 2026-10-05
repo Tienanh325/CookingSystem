@@ -62,7 +62,7 @@ const BinhLuanController = {
     const noiDung = normalizeText(req.body.noiDung);
 
     if (!noiDung) {
-      return sendError(res, 400, 'noiDung is required');
+      return sendError(res, 400, 'Vui lòng nhập nội dung bình luận.');
     }
 
     const monAn = await db.MonAn.findOne({
@@ -73,7 +73,7 @@ const BinhLuanController = {
     });
 
     if (!monAn) {
-      return sendError(res, 404, 'Recipe not found');
+      return sendError(res, 404, 'Không tìm thấy công thức.');
     }
 
     const idBinhLuanCha = req.body.idBinhLuanCha
@@ -90,7 +90,7 @@ const BinhLuanController = {
       });
 
       if (!parent || parent.idBinhLuanCha !== null) {
-        return sendError(res, 400, 'Parent comment does not exist');
+        return sendError(res, 400, 'Bình luận cha không tồn tại.');
       }
     }
 
@@ -113,17 +113,17 @@ const BinhLuanController = {
     const comment = await db.BinhLuan.findByPk(req.params.id);
 
     if (!comment || comment.trangThai !== 1) {
-      return sendError(res, 404, 'Comment not found');
+      return sendError(res, 404, 'Không tìm thấy bình luận.');
     }
 
     if (!canModifyComment(req, comment)) {
-      return sendError(res, 403, 'You cannot update this comment');
+      return sendError(res, 403, 'Bạn không có quyền sửa bình luận này.');
     }
 
     const noiDung = normalizeText(req.body.noiDung);
 
     if (!noiDung) {
-      return sendError(res, 400, 'noiDung is required');
+      return sendError(res, 400, 'Vui lòng nhập nội dung bình luận.');
     }
 
     await sequelize.transaction(async (transaction) => {
@@ -138,11 +138,11 @@ const BinhLuanController = {
     const comment = await db.BinhLuan.findByPk(req.params.id);
 
     if (!comment || comment.trangThai !== 1) {
-      return sendError(res, 404, 'Comment not found');
+      return sendError(res, 404, 'Không tìm thấy bình luận.');
     }
 
     if (!canModifyComment(req, comment)) {
-      return sendError(res, 403, 'You cannot delete this comment');
+      return sendError(res, 403, 'Bạn không có quyền xóa bình luận này.');
     }
 
     await sequelize.transaction(async (transaction) => {

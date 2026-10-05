@@ -1,8 +1,8 @@
-import { createContext, useContext, useEffect, useState } from 'react'
-import { Platform } from 'react-native'
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { AppState, Platform } from 'react-native'
 import * as SecureStore from 'expo-secure-store'
 import { goiApi, datMaTruyCap, datXuLyChuaXacThuc } from '../dichVu/KetNoiApi'
-import { dangKyThongBaoDay, huyDangKyThongBaoDay } from '../dichVu/ThongBaoDay'
+import { dangKyThongBaoDay, datSoThongBaoHeThong, huyDangKyThongBaoDay, langNgheNhanThongBao } from '../dichVu/ThongBaoDay'
 const NguCanhXacThuc = createContext<any>(null)
 const KHOA_PHIEN = 'cookmate.session'
 const KHOA_SINH_TRAC = 'cookmate.biometric'
@@ -25,10 +25,28 @@ const boNho = {
 export function NhaCungCapXacThuc({ children }) {
   const [nguoiDung, datNguoiDung] = useState(null),
     [dangTai, datDangTai] = useState(true),
-    [loiPhien, datLoiPhien] = useState('')
+    [loiPhien, datLoiPhien] = useState(''),
+    [soThongBaoChuaDoc, datSoThongBaoChuaDoc] = useState(0)
+  const taiLaiSoThongBaoChuaDoc = useCallback(async () => {
+    if (!nguoiDung) {
+      datSoThongBaoChuaDoc(0)
+      return 0
+    }
+    try {
+      const result = await goiApi('/thong-bao?daDoc=0&limit=1')
+      const count = Number(result.meta?.totalItems ?? result.data?.length ?? 0)
+      datSoThongBaoChuaDoc(count)
+      datSoThongBaoHeThong(count).catch(() => {})
+      return count
+    } catch {
+      return 0
+    }
+  }, [nguoiDung])
   const xoaPhien = async () => {
     datMaTruyCap(null)
     datNguoiDung(null)
+    datSoThongBaoChuaDoc(0)
+    datSoThongBaoHeThong(0).catch(() => {})
     await boNho.set(null)
     if (Platform.OS !== 'web') await SecureStore.deleteItemAsync(KHOA_SINH_TRAC)
   }
@@ -72,6 +90,23 @@ export function NhaCungCapXacThuc({ children }) {
   useEffect(() => {
     if (nguoiDung) dangKyThongBaoDay(false).catch(() => {})
   }, [nguoiDung])
+  useEffect(() => {
+    if (!nguoiDung) {
+      datSoThongBaoChuaDoc(0)
+      return
+    }
+    taiLaiSoThongBaoChuaDoc()
+    const timer = setInterval(taiLaiSoThongBaoChuaDoc, 15000)
+    const boLangNghePush = langNgheNhanThongBao(taiLaiSoThongBaoChuaDoc)
+    const boLangNgheTrangThai = AppState.addEventListener('change', (state) => {
+      if (state === 'active') taiLaiSoThongBaoChuaDoc()
+    })
+    return () => {
+      clearInterval(timer)
+      boLangNghePush()
+      boLangNgheTrangThai.remove()
+    }
+  }, [nguoiDung, taiLaiSoThongBaoChuaDoc])
   async function xacThucTaiKhoan(body, dangKy = false) {
     const ketQua = await goiApi(dangKy ? '/auth/register' : '/auth/login', {
       method: 'POST',
@@ -105,6 +140,8 @@ export function NhaCungCapXacThuc({ children }) {
         dangXuat,
         xoaPhien,
         loiPhien,
+        soThongBaoChuaDoc,
+        taiLaiSoThongBaoChuaDoc,
       }}
     >
       {children}

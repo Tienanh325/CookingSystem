@@ -15,7 +15,7 @@ import {
 } from '../thanhPhan/GiaoDien'
 import { mauSac, kieuDang as s } from '../ChuDe'
 export default function ThongBao({ navigation }) {
-  const { nguoiDung } = useXacThuc(),
+  const { nguoiDung, taiLaiSoThongBaoChuaDoc } = useXacThuc(),
     [limit, setLimit] = useState(5),
     [page, setPage] = useState(1),
     [busy, setBusy] = useState(false),
@@ -29,6 +29,7 @@ export default function ThongBao({ navigation }) {
         method: 'PATCH',
         body: {},
       })
+      await taiLaiSoThongBaoChuaDoc()
       r.reload()
     } catch (e) {
       setError(e.message)
@@ -42,6 +43,7 @@ export default function ThongBao({ navigation }) {
     try {
       if (!item.daDoc)
         await goiApi(`/thong-bao/${item.idThongBao}/read`, { method: 'PATCH', body: {} })
+      if (!item.daDoc) await taiLaiSoThongBaoChuaDoc()
       const paymentId = String(item.thongBao?.duongDan || '').match(/[?&]id=(\d+)/)?.[1]
       if (String(item.thongBao?.loai || '').startsWith('THANH_TOAN_') && paymentId)
         navigation.navigate('KetQuaThanhToan', { id: Number(paymentId) })

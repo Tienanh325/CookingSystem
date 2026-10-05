@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Plus, Pencil, EyeOff, Eye, ChefHat, Clock, Users } from 'lucide-react'
+import { Plus, Pencil, EyeOff, Eye, Trash2, ChefHat, Clock, Users } from 'lucide-react'
 import { api, imageUrl } from '../lib/api'
 import useResource from '../lib/useResource'
 import {
@@ -20,6 +20,7 @@ export default function Recipes() {
     [status, setStatus] = useState(''),
     [error, setError] = useState(''),
     [pending, setPending] = useState(null),
+    [deletePending, setDeletePending] = useState(null),
     [busy, setBusy] = useState(false)
   const q = params.get('q') || '',
     r = useResource(
@@ -37,6 +38,20 @@ export default function Recipes() {
     } catch (e) {
       setError(e.message)
       setPending(null)
+    } finally {
+      setBusy(false)
+    }
+  }
+  async function remove() {
+    setBusy(true)
+    setError('')
+    try {
+      await api(`/mon-an/${deletePending.idMonAn}`, { method: 'DELETE' })
+      setDeletePending(null)
+      r.reload()
+    } catch (e) {
+      setError(e.message)
+      setDeletePending(null)
     } finally {
       setBusy(false)
     }
@@ -134,6 +149,9 @@ export default function Recipes() {
                   >
                     {item.trangThai ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
+                  <button className="icon-button danger" aria-label="Xóa công thức" onClick={() => setDeletePending(item)}>
+                    <Trash2 size={18} />
+                  </button>
                 </div>
               </div>
             </article>
@@ -170,6 +188,16 @@ export default function Recipes() {
             <Button disabled={busy} onClick={toggle}>
               {busy ? 'Đang lưu…' : 'Xác nhận'}
             </Button>
+          </div>
+        </Modal>
+      )}
+      {deletePending && (
+        <Modal title="Xóa công thức?" onClose={() => setDeletePending(null)} busy={busy}>
+          <p>“{deletePending.tenMonAn}” sẽ bị ẩn khỏi ứng dụng khách hàng.</p>
+          <Alert>Công thức được xóa an toàn bằng cách ngừng công khai để giữ nguyên lịch sử nấu, đánh giá và dữ liệu liên kết.</Alert>
+          <div className="form-actions">
+            <Button variant="secondary" disabled={busy} onClick={() => setDeletePending(null)}>Quay lại</Button>
+            <Button variant="danger" disabled={busy} onClick={remove}>{busy ? 'Đang xóa…' : 'Xóa công thức'}</Button>
           </div>
         </Modal>
       )}

@@ -64,7 +64,7 @@ const YeuThichController = {
     });
 
     if (!monAn) {
-      return sendError(res, 404, 'Recipe not found');
+      return sendError(res, 404, 'Không tìm thấy công thức.');
     }
 
     const [favorite, created] = await db.YeuThich.findOrCreate({
@@ -96,7 +96,7 @@ const YeuThichController = {
     });
 
     if (!deleted) {
-      return sendError(res, 404, 'Favorite not found');
+      return sendError(res, 404, 'Không tìm thấy công thức trong danh sách yêu thích.');
     }
 
     return sendSuccess(res, 200, 'Favorite removed');

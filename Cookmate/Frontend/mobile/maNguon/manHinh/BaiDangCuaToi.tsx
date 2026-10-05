@@ -70,6 +70,13 @@ export default function BaiDangCuaToi({ navigation }) {
                     Lý do: {item.lyDoTuChoi}
                   </Text>
                 )}
+                <Nut
+                  title="Xem chi tiết"
+                  secondary
+                  icon="eye-outline"
+                  onPress={() => navigation.navigate('XemBaiDang', { id: item.idMonAn })}
+                  style={{ marginTop: 14 }}
+                />
                 {editable && (
                   <View style={[s.row, { gap: 10, marginTop: 15 }]}> 
                     <Pressable onPress={() => navigation.navigate('DangCongThuc', { id: item.idMonAn })}>

@@ -1,5 +1,125 @@
 const { z } = require('zod');
 const { sendError } = require('../utils/apiResponse');
+
+const FIELD_LABELS = {
+  hoTen: 'Họ và tên',
+  email: 'Email',
+  taiKhoan: 'Email tài khoản',
+  matKhau: 'Mật khẩu',
+  matKhauCu: 'Mật khẩu hiện tại',
+  matKhauMoi: 'Mật khẩu mới',
+  soDienThoai: 'Số điện thoại',
+  anhDaiDien: 'Ảnh đại diện',
+  tenMonAn: 'Tên món ăn',
+  idDanhMuc: 'Danh mục',
+  moTa: 'Mô tả',
+  gioiThieu: 'Giới thiệu',
+  doKho: 'Độ khó',
+  khauPhan: 'Khẩu phần',
+  thoiGianChuanBi: 'Thời gian chuẩn bị',
+  thoiGianNau: 'Thời gian nấu',
+  tongThoiGian: 'Tổng thời gian',
+  trangThai: 'Trạng thái',
+  tenDauBep: 'Tên đầu bếp',
+  videoHuongDan: 'Video hướng dẫn',
+  capTruyCapToiThieu: 'Gói truy cập tối thiểu',
+  nguyenLieus: 'Nguyên liệu',
+  idNguyenLieu: 'Nguyên liệu',
+  soLuong: 'Số lượng',
+  khoiLuongGram: 'Khối lượng quy đổi',
+  donVi: 'Đơn vị',
+  ghiChu: 'Ghi chú',
+  buocNaus: 'Các bước nấu',
+  soThuTu: 'Số thứ tự',
+  tieuDe: 'Tiêu đề',
+  huongDan: 'Hướng dẫn',
+  anh: 'Ảnh',
+  thoiGian: 'Thời gian',
+  hinhAnhs: 'Hình ảnh',
+  duongDan: 'Đường dẫn',
+  thuTu: 'Thứ tự',
+  tenDanhMuc: 'Tên danh mục',
+  tenNguyenLieu: 'Tên nguyên liệu',
+  donViMacDinh: 'Đơn vị mặc định',
+  nangLuongKcal: 'Năng lượng',
+  proteinG: 'Protein',
+  carbG: 'Carbohydrate',
+  chatBeoG: 'Chất béo',
+  chatXoG: 'Chất xơ',
+  natriMg: 'Natri',
+  tenVaiTro: 'Tên vai trò',
+  idVaiTro: 'Vai trò',
+  soSao: 'Số sao',
+  noiDung: 'Nội dung',
+  idBinhLuanCha: 'Bình luận cha',
+  daHoanThanh: 'Trạng thái hoàn thành',
+  idMonAn: 'Món ăn',
+  loai: 'Loại thông báo',
+  guiTatCa: 'Gửi cho tất cả',
+  idNguoiDungs: 'Người nhận',
+  token: 'Mã xác thực',
+  nenTang: 'Nền tảng',
+  maThietBi: 'Mã thiết bị',
+  quyetDinh: 'Quyết định',
+  lyDoTuChoi: 'Lý do từ chối',
+  page: 'Trang',
+  limit: 'Số lượng mỗi trang',
+  idNguoiDung: 'Người dùng',
+  maxTime: 'Thời gian tối đa',
+  thoiGianToiDa: 'Thời gian tối đa',
+  daDoc: 'Trạng thái đã đọc',
+  trangThaiDuyet: 'Trạng thái duyệt',
+  ingredients: 'Danh sách nguyên liệu',
+  nguyenLieuIds: 'Danh sách nguyên liệu',
+};
+
+const getFieldLabel = (path) => {
+  if (!path.length) return 'Dữ liệu';
+  return path
+    .map((part) =>
+      typeof part === 'number' ? `mục ${part + 1}` : FIELD_LABELS[part] || String(part),
+    )
+    .join(' – ');
+};
+
+const formatValidationIssue = (issue) => {
+  const field = getFieldLabel(issue.path);
+
+  if (issue.code === 'invalid_type') {
+    if (/received undefined$/i.test(issue.message))
+      return issue.path.length ? `${field} là trường bắt buộc.` : 'Vui lòng nhập thông tin bắt buộc.';
+    return `${field} không đúng kiểu dữ liệu.`;
+  }
+
+  if (issue.code === 'too_small') {
+    if (issue.origin === 'string') {
+      if (Number(issue.minimum) === 1) return `${field} không được để trống.`;
+      return `${field} phải có ít nhất ${issue.minimum} ký tự.`;
+    }
+    if (issue.origin === 'array') return `${field} phải có ít nhất ${issue.minimum} mục.`;
+    if (issue.origin === 'number')
+      return `${field} phải ${issue.inclusive ? 'lớn hơn hoặc bằng' : 'lớn hơn'} ${issue.minimum}.`;
+  }
+
+  if (issue.code === 'too_big') {
+    if (issue.origin === 'string') return `${field} không được vượt quá ${issue.maximum} ký tự.`;
+    if (issue.origin === 'array') return `${field} không được vượt quá ${issue.maximum} mục.`;
+    if (issue.origin === 'number')
+      return `${field} phải ${issue.inclusive ? 'nhỏ hơn hoặc bằng' : 'nhỏ hơn'} ${issue.maximum}.`;
+  }
+
+  if (issue.code === 'invalid_format') {
+    if (issue.format === 'email') return `${field} không đúng định dạng email.`;
+    if (issue.format === 'url') return `${field} không đúng định dạng đường dẫn.`;
+    return `${field} không đúng định dạng.`;
+  }
+
+  if (issue.code === 'invalid_value') return `${field} không thuộc giá trị cho phép.`;
+  if (issue.code === 'invalid_union') return `${field} không hợp lệ.`;
+
+  return issue.path.length ? `${field}: ${issue.message}` : issue.message;
+};
+
 const text = (max = 255) => z.string().trim().min(1, 'Không được để trống').max(max);
 const optionalText = (max = 5000) => z.string().trim().max(max).nullable().optional();
 const id = z.number().int().positive();
@@ -127,7 +247,7 @@ function validateRequest(req, res, next) {
         Number(req.query[key]) < 1 ||
         Number(req.query[key]) > 1000000)
     )
-      return sendError(res, 400, `${key} không hợp lệ.`);
+      return sendError(res, 400, `${getFieldLabel([key])} không hợp lệ.`);
   }
   for (const key of ['daDoc', 'trangThai'])
     if (
@@ -135,7 +255,7 @@ function validateRequest(req, res, next) {
       !(key === 'trangThai' && path.startsWith('/lich-su-nau')) &&
       !['0', '1'].includes(req.query[key])
     )
-      return sendError(res, 400, `${key} không hợp lệ.`);
+      return sendError(res, 400, `${getFieldLabel([key])} không hợp lệ.`);
   if (req.query.doKho && !['DE', 'TRUNG_BINH', 'KHO'].includes(req.query.doKho))
     return sendError(res, 400, 'Độ khó không hợp lệ.');
   if (
@@ -173,7 +293,15 @@ function validateRequest(req, res, next) {
       matKhau: z.string().min(1).max(200),
     });
   else if (path === '/auth/forgot-password')
-    schema = z.object({ email: z.email().max(150).transform((v) => v.toLowerCase()) });
+    schema = z
+      .object({
+        taiKhoan: z.email().max(150).transform((v) => v.toLowerCase()).optional(),
+        email: z.email().max(150).transform((v) => v.toLowerCase()).optional(),
+      })
+      .refine((value) => value.taiKhoan || value.email, {
+        message: 'Vui lòng nhập email tài khoản.',
+        path: ['taiKhoan'],
+      });
   else if (path === '/auth/reset-password')
     schema = z.object({ token: z.string().regex(/^[a-f0-9]{64}$/), matKhauMoi: password });
   else if (path === '/auth/me') schema = profile;
@@ -227,11 +355,11 @@ function validateRequest(req, res, next) {
       res,
       400,
       'Dữ liệu không hợp lệ.',
-      result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),
+      result.error.issues.map(formatValidationIssue),
     );
   if (update && !Object.keys(result.data).length)
     return sendError(res, 400, 'Chưa có dữ liệu cần cập nhật.');
   req.body = result.data;
   return next();
 }
-module.exports = { validateRequest, schemas };
+module.exports = { formatValidationIssue, validateRequest, schemas };

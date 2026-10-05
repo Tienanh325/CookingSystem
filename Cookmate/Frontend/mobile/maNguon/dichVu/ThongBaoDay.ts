@@ -59,6 +59,17 @@ export function langNgheMoThongBao(xuLy: (duLieu: any) => void) {
   return () => dangKy.remove()
 }
 
+export function langNgheNhanThongBao(xuLy: () => void) {
+  if (Platform.OS === 'web') return () => {}
+  const dangKy = Notifications.addNotificationReceivedListener(() => xuLy())
+  return () => dangKy.remove()
+}
+
+export async function datSoThongBaoHeThong(soLuong: number) {
+  if (Platform.OS === 'web') return false
+  return Notifications.setBadgeCountAsync(Math.max(0, soLuong)).catch(() => false)
+}
+
 export async function layThongBaoDaMoUngDung() {
   if (Platform.OS === 'web') return null
   const phanHoi = await Notifications.getLastNotificationResponseAsync()

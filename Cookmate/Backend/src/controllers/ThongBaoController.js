@@ -60,6 +60,24 @@ module.exports = {
     );
     return sendSuccess(res, 200, 'Đã đọc tất cả');
   }),
+  remove: asyncHandler(async (req, res) => {
+    await sequelize.transaction(async (transaction) => {
+      const notification = await db.ThongBao.findByPk(req.params.id, {
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!notification) throw error(404, 'Thông báo không tồn tại.');
+      if (['YEU_CAU_THANH_TOAN', 'THANH_TOAN_THANH_CONG', 'THANH_TOAN_TU_CHOI'].includes(notification.loai))
+        throw error(409, 'Không thể xóa thông báo thuộc lịch sử giao dịch.');
+      await db.ThongBaoNguoiDung.destroy({
+        where: { idThongBao: notification.idThongBao },
+        transaction,
+      });
+      await audit(req, 'DELETE', 'ThongBao', notification.idThongBao, transaction);
+      await notification.destroy({ transaction });
+    });
+    return sendSuccess(res, 200, 'Đã xóa thông báo.');
+  }),
   registerDevice: asyncHandler(async (req, res) => {
     const [thietBi, daTao] = await db.ThietBiThongBao.findOrCreate({
       where: { token: req.body.token },
