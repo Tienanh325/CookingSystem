@@ -70,6 +70,9 @@ const FIELD_LABELS = {
   tuNgay: 'Ngày bắt đầu',
   denNgay: 'Ngày kết thúc',
   mucTieuKcalMoiNgay: 'Mục tiêu năng lượng mỗi ngày',
+  ngay: 'Ngày ăn',
+  loaiBua: 'Loại bữa',
+  soKhauPhan: 'Số khẩu phần',
   daDoc: 'Trạng thái đã đọc',
   trangThaiDuyet: 'Trạng thái duyệt',
   ingredients: 'Danh sách nguyên liệu',
@@ -224,9 +227,59 @@ const role = z.object({
   moTa: optionalText(255),
   trangThai: status.optional(),
 });
-const schemas = { recipe, category, ingredient, profile, password };
+const isValidPlanDate = (value) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+};
+const planDate = z.string().refine(isValidPlanDate, 'Ngày không hợp lệ.');
+const planFields = {
+  tenLich: text(150),
+  tuNgay: planDate,
+  denNgay: planDate,
+  mucTieuKcalMoiNgay: z.number().int().min(1000).max(5000),
+};
+const withValidPlanRange = (schema) =>
+  schema.superRefine((value, context) => {
+    if (!isValidPlanDate(value.tuNgay || '') || !isValidPlanDate(value.denNgay || '')) return;
+    if (value.tuNgay > value.denNgay) {
+      context.addIssue({
+        code: 'custom',
+        path: ['denNgay'],
+        message: 'Ngày kết thúc phải bằng hoặc sau ngày bắt đầu.',
+      });
+      return;
+    }
+    const duration = Date.parse(`${value.denNgay}T00:00:00.000Z`)
+      - Date.parse(`${value.tuNgay}T00:00:00.000Z`);
+    if (duration > 30 * 24 * 60 * 60 * 1000)
+      context.addIssue({
+        code: 'custom',
+        path: ['denNgay'],
+        message: 'Lịch ăn không được dài quá 31 ngày.',
+      });
+  });
+const plan = withValidPlanRange(z.object(planFields));
+const planUpdate = withValidPlanRange(z.object(planFields).partial());
+const planMeal = z.object({
+  idMonAn: id,
+  ngay: planDate,
+  loaiBua: z.enum(['SANG', 'TRUA', 'TOI', 'PHU']).default('TRUA'),
+  soKhauPhan: z.number().finite().positive().max(100).default(1),
+  ghiChu: optionalText(500),
+});
+const schemas = {
+  recipe,
+  category,
+  ingredient,
+  profile,
+  password,
+  plan,
+  planUpdate,
+  planMeal,
+};
 function validateRequest(req, res, next) {
-  const path = req.path.replace(/^\/admin(?=\/)/, '');
+  const path = (req.path.replace(/^\/admin(?=\/)/i, '').replace(/\/+$/, '') || '/').toLowerCase();
   for (const segment of path.split('/').filter(Boolean)) {
     if (
       /^-?\d/.test(segment) &&
@@ -252,7 +305,7 @@ function validateRequest(req, res, next) {
     )
       return sendError(res, 400, `${getFieldLabel([key])} không hợp lệ.`);
   }
-  for (const key of ['daDoc', 'trangThai'])
+  for (const key of ['daDoc', 'trangThai', 'nameOnly'])
     if (
       req.query[key] !== undefined &&
       !(key === 'trangThai' && path.startsWith('/lich-su-nau')) &&
@@ -315,13 +368,9 @@ function validateRequest(req, res, next) {
     schema = z.object({ noiDung: text(5000), idBinhLuanCha: id.nullable().optional() });
   else if (/^\/binh-luan\/\d+$/.test(path)) schema = z.object({ noiDung: text(5000) });
   else if (/\/steps\/\d+$/.test(path)) schema = z.object({ daHoanThanh: z.boolean() });
-  else if (path === '/lich-an')
-    schema = z.object({
-      tenLich: text(150),
-      tuNgay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      denNgay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      mucTieuKcalMoiNgay: z.number().int().min(1000).max(5000),
-    });
+  else if (path === '/lich-an' && req.method === 'POST') schema = plan;
+  else if (/^\/lich-an\/\d+$/.test(path) && update) schema = planUpdate;
+  else if (/^\/lich-an\/\d+\/bua-an$/.test(path) && req.method === 'POST') schema = planMeal;
   else if (path === '/lich-su-nau') schema = z.object({ idMonAn: id });
   else if (path === '/thong-bao')
     schema = z

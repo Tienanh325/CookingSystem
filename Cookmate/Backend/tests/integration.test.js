@@ -365,6 +365,207 @@ test('recipe nutrition is calculated from ingredient weight per serving', async 
   assert.equal(detail.data.dinhDuong.moiKhauPhan.nangLuongKcal, 130);
   assert.equal(detail.data.dinhDuong.moiKhauPhan.proteinG, 2.7);
 });
+test('meal calendar updates enforce ownership, valid ranges and preserve existing data', async () => {
+  const tooLongCreate = await request(
+    'POST',
+    '/lich-an',
+    {
+      tenLich: 'Lịch quá dài',
+      tuNgay: '2026-11-01',
+      denNgay: '2026-12-02',
+      mucTieuKcalMoiNgay: 1900,
+    },
+    user,
+  );
+  assert.equal(tooLongCreate.status, 400, JSON.stringify(tooLongCreate));
+  assert.match(JSON.stringify(tooLongCreate), /31 ngày/);
+
+  const created = await request(
+    'POST',
+    '/lich-an',
+    {
+      tenLich: 'Lịch cần chỉnh sửa',
+      tuNgay: '2026-11-02',
+      denNgay: '2026-11-08',
+      mucTieuKcalMoiNgay: 1900,
+    },
+    user,
+  );
+  assert.equal(created.status, 201, JSON.stringify(created));
+  const planId = created.data.idLichAn;
+  const validMeal = {
+    idMonAn: recipe.idMonAn,
+    ngay: '2026-11-04',
+    loaiBua: 'TRUA',
+    soKhauPhan: 1,
+  };
+  const descriptionOnlyRecipe = await db.MonAn.create({
+    idDanhMuc: category.idDanhMuc,
+    tenMonAn: 'Món chỉ khớp phần mô tả',
+    moTa: 'Cơm nhà',
+    trangThai: 1,
+    trangThaiDuyet: 'DA_DUYET',
+  });
+  const nameResults = await request('GET', '/mon-an?q=C%C6%A1m%20nh%C3%A0&nameOnly=1&limit=20');
+  assert.equal(nameResults.status, 200, JSON.stringify(nameResults));
+  assert.ok(nameResults.data.some((item) => item.idMonAn === recipe.idMonAn));
+  assert.ok(!nameResults.data.some((item) => item.idMonAn === descriptionOnlyRecipe.idMonAn));
+  for (const invalidMeal of [
+    { ...validMeal, idMonAn: 0 },
+    { ...validMeal, ngay: '2026-02-30' },
+    { ...validMeal, loaiBua: 'BRUNCH' },
+    { ...validMeal, soKhauPhan: 101 },
+    { ...validMeal, ghiChu: 'x'.repeat(501) },
+  ]) {
+    const invalid = await request(
+      'POST',
+      `/lich-an/${planId}/bua-an`,
+      invalidMeal,
+      user,
+    );
+    assert.equal(invalid.status, 400, JSON.stringify(invalid));
+  }
+  assert.equal(
+    (
+      await request(
+        'POST',
+        `/lich-an/${planId}/bua-an/`,
+        { ...validMeal, ghiChu: 'x'.repeat(501) },
+        user,
+      )
+    ).status,
+    400,
+  );
+
+  const lockedRecipes = await db.MonAn.bulkCreate(
+    ['BASIC', 'PRO', 'CHEF'].map((requiredPlan) => ({
+      idDanhMuc: category.idDanhMuc,
+      tenMonAn: `Món khóa ${requiredPlan}`,
+      khauPhan: 1,
+      trangThai: 1,
+      trangThaiDuyet: 'DA_DUYET',
+      capTruyCapToiThieu: requiredPlan,
+    })),
+  );
+  for (const lockedRecipe of lockedRecipes) {
+    const denied = await request(
+      'POST',
+      `/lich-an/${planId}/bua-an`,
+      { ...validMeal, idMonAn: lockedRecipe.idMonAn },
+      user,
+    );
+    assert.equal(denied.status, 403, JSON.stringify(denied));
+  }
+  assert.equal(
+    await db.BuaAnTrongLich.count({
+      where: { idLichAn: planId, idMonAn: lockedRecipes.map((item) => item.idMonAn) },
+    }),
+    0,
+  );
+
+  const meal = await request(
+    'POST',
+    `/lich-an/${planId}/bua-an`,
+    validMeal,
+    user,
+  );
+  assert.equal(meal.status, 201, JSON.stringify(meal));
+
+  const updated = await request(
+    'PATCH',
+    `/lich-an/${planId}`,
+    {
+      tenLich: 'Lịch đã chỉnh sửa',
+      tuNgay: '2026-11-03',
+      denNgay: '2026-11-09',
+      mucTieuKcalMoiNgay: 2100,
+    },
+    user,
+  );
+  assert.equal(updated.status, 200, JSON.stringify(updated));
+  assert.equal(updated.data.tenLich, 'Lịch đã chỉnh sửa');
+  assert.equal(updated.data.tuNgay, '2026-11-03');
+  assert.equal(updated.data.denNgay, '2026-11-09');
+  assert.equal(updated.data.mucTieuKcalMoiNgay, 2100);
+  assert.equal(updated.data.buaAns.length, 1);
+  assert.equal(updated.data.buaAns[0].idBuaAnTrongLich, meal.data.idBuaAnTrongLich);
+  assert.equal(updated.data.buaAns[0].monAn.nguyenLieus, undefined);
+
+  const partial = await request(
+    'PATCH',
+    `/lich-an/${planId}`,
+    { mucTieuKcalMoiNgay: 2200 },
+    user,
+  );
+  assert.equal(partial.status, 200, JSON.stringify(partial));
+  assert.equal(partial.data.tenLich, 'Lịch đã chỉnh sửa');
+  assert.equal(partial.data.tuNgay, '2026-11-03');
+  assert.equal(partial.data.denNgay, '2026-11-09');
+  assert.equal(partial.data.mucTieuKcalMoiNgay, 2200);
+
+  assert.equal(
+    (
+      await request(
+        'PATCH',
+        `/lich-an/${planId}`,
+        { tenLich: 'Không được phép sửa' },
+        other,
+      )
+    ).status,
+    404,
+  );
+  assert.equal(
+    (await request('PATCH', `/lich-an/${planId}`, { tuNgay: '2026-02-30' }, user)).status,
+    400,
+  );
+  assert.equal(
+    (await request('PATCH', `/lich-an/${planId}`, { tuNgay: '2026-11-10' }, user)).status,
+    400,
+  );
+  const tooLongFullUpdate = await request(
+    'PATCH',
+    `/lich-an/${planId}`,
+    { tuNgay: '2026-11-01', denNgay: '2026-12-02' },
+    user,
+  );
+  assert.equal(tooLongFullUpdate.status, 400, JSON.stringify(tooLongFullUpdate));
+  assert.match(JSON.stringify(tooLongFullUpdate), /31 ngày/);
+  const tooLongPartialUpdate = await request(
+    'PATCH',
+    `/lich-an/${planId}`,
+    { denNgay: '2026-12-04' },
+    user,
+  );
+  assert.equal(tooLongPartialUpdate.status, 400, JSON.stringify(tooLongPartialUpdate));
+  assert.match(JSON.stringify(tooLongPartialUpdate), /31 ngày/);
+  assert.equal(
+    (
+      await request(
+        'PATCH',
+        `/lich-an/${planId}/`,
+        { mucTieuKcalMoiNgay: 999 },
+        user,
+      )
+    ).status,
+    400,
+  );
+  assert.equal((await request('PATCH', `/lich-an/${planId}`, {}, user)).status, 400);
+
+  const excludedMeal = await request(
+    'PATCH',
+    `/lich-an/${planId}`,
+    { denNgay: '2026-11-03' },
+    user,
+  );
+  assert.equal(excludedMeal.status, 409, JSON.stringify(excludedMeal));
+  const preserved = await request('GET', `/lich-an/${planId}`, undefined, user);
+  assert.equal(preserved.status, 200, JSON.stringify(preserved));
+  assert.equal(preserved.data.tenLich, 'Lịch đã chỉnh sửa');
+  assert.equal(preserved.data.tuNgay, '2026-11-03');
+  assert.equal(preserved.data.denNgay, '2026-11-09');
+  assert.equal(preserved.data.mucTieuKcalMoiNgay, 2200);
+  assert.equal(preserved.data.buaAns.length, 1);
+});
 test('meal calendar supports manual planning, evaluation and Pro automation', async () => {
   const plan = await request('POST', '/lich-an', {
     tenLich: 'Tuần kiểm thử', tuNgay: '2026-09-28', denNgay: '2026-10-04', mucTieuKcalMoiNgay: 1800,
@@ -409,9 +610,42 @@ test('meal calendar supports manual planning, evaluation and Pro automation', as
       khoiLuongGram: 150,
     });
   }
+  const chefRecipeIds = [];
+  for (let index = 1; index <= 3; index += 1) {
+    const chefIngredient = await db.NguyenLieu.create({
+      tenNguyenLieu: `Nguyên liệu Chef ${index}`,
+      donViMacDinh: 'g',
+      nangLuongKcal: 200,
+      proteinG: 12,
+      carbG: 27.5,
+      chatBeoG: 4.67,
+      chatXoG: 2.8,
+      natriMg: 100,
+    });
+    const chefRecipe = await db.MonAn.create({
+      idDanhMuc: category.idDanhMuc,
+      idTacGia: account.idNguoiDung,
+      tenMonAn: `Món Chef cân bằng ${index}`,
+      khauPhan: 1,
+      trangThai: 1,
+      trangThaiDuyet: 'DA_DUYET',
+      capTruyCapToiThieu: 'CHEF',
+      diemDanhGia: 9,
+    });
+    chefRecipeIds.push(chefRecipe.idMonAn);
+    await db.MonAnNguyenLieu.create({
+      idMonAn: chefRecipe.idMonAn,
+      idNguyenLieu: chefIngredient.idNguyenLieu,
+      soLuong: 150,
+      donVi: 'g',
+      khoiLuongGram: 150,
+    });
+  }
   const generated = await request('POST', `/lich-an/${plan.data.idLichAn}/tao-tu-dong`, {}, user);
   assert.equal(generated.status, 200, JSON.stringify(generated));
   assert.equal(generated.data.buaAns.length, 21);
+  assert.ok(generated.data.buaAns.every((item) => !chefRecipeIds.includes(item.idMonAn)));
+  assert.ok(generated.data.buaAns.every((item) => item.monAn.nguyenLieus === undefined));
   assert.equal(generated.data.danhGiaDinhDuong.length, 7);
   assert.ok(generated.data.danhGiaDinhDuong.every((day) => day.datMucTieu));
   const generatedEvaluation = await request('GET', `/lich-an/${plan.data.idLichAn}/danh-gia`, undefined, user);

@@ -1,10 +1,12 @@
 const sequelize = require('../config/database');
+const { Op } = require('sequelize');
 const db = require('../models');
 const asyncHandler = require('../utils/asyncHandler');
 const error = require('../utils/httpError');
 const { sendSuccess } = require('../utils/apiResponse');
 const { tinhDinhDuong } = require('../services/dinhDuong');
 const { layGoiHienTai } = require('../services/goiDichVu');
+const { CAP_DO, kiemTraMoCongThuc } = require('../services/truyCapCongThuc');
 const {
   CHI_SO,
   chonThucDonTrongNgay,
@@ -13,6 +15,7 @@ const {
 } = require('../services/lapThucDon');
 
 const LOAI_BUA = ['SANG', 'TRUA', 'TOI', 'PHU'];
+const MOT_NGAY_MS = 24 * 60 * 60 * 1000;
 const dinhDuongInclude = {
   model: db.MonAn,
   as: 'monAn',
@@ -40,8 +43,44 @@ async function layLich(id, userId) {
   return row;
 }
 
+function xuatLichAn(lich) {
+  const result = typeof lich?.toJSON === 'function' ? lich.toJSON() : { ...lich };
+  result.buaAns = (result.buaAns || []).map((meal) => {
+    if (!meal.monAn) return meal;
+    const monAn = { ...meal.monAn };
+    delete monAn.nguyenLieus;
+    return { ...meal, monAn };
+  });
+  return result;
+}
+
+async function layLichDeGhi(id, userId, transaction) {
+  const row = await db.LichAn.findOne({
+    where: { idLichAn: id, idNguoiDung: userId, trangThai: 1 },
+    transaction,
+    lock: transaction.LOCK.UPDATE,
+  });
+  if (!row) throw error(404, 'Không tìm thấy lịch ăn.');
+  return row;
+}
+
+function laNgayHopLe(ngay) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ngay))) return false;
+  const parsed = new Date(`${ngay}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === ngay;
+}
+
+function kiemTraKhoangLich(tuNgay, denNgay) {
+  if (!laNgayHopLe(tuNgay) || !laNgayHopLe(denNgay) || tuNgay > denNgay)
+    throw error(400, 'Ngày kết thúc phải bằng hoặc sau ngày bắt đầu.');
+  const duration = Date.parse(`${denNgay}T00:00:00.000Z`)
+    - Date.parse(`${tuNgay}T00:00:00.000Z`);
+  if (duration > 30 * MOT_NGAY_MS)
+    throw error(400, 'Lịch ăn không được dài quá 31 ngày.');
+}
+
 function kiemTraNgay(lich, ngay) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(ngay)) || ngay < lich.tuNgay || ngay > lich.denNgay)
+  if (!laNgayHopLe(ngay) || ngay < lich.tuNgay || ngay > lich.denNgay)
     throw error(400, 'Ngày của bữa ăn phải nằm trong khoảng lịch.');
 }
 
@@ -107,22 +146,82 @@ const list = asyncHandler(async (req, res) => {
 
 const create = asyncHandler(async (req, res) => {
   const { tenLich, tuNgay, denNgay, mucTieuKcalMoiNgay } = req.body;
-  if (!tenLich || !/^\d{4}-\d{2}-\d{2}$/.test(String(tuNgay)) || !/^\d{4}-\d{2}-\d{2}$/.test(String(denNgay)) || tuNgay > denNgay)
-    throw error(400, 'Tên lịch và khoảng ngày không hợp lệ.');
+  if (!tenLich) throw error(400, 'Tên lịch không hợp lệ.');
+  kiemTraKhoangLich(tuNgay, denNgay);
   const row = await db.LichAn.create({ idNguoiDung: req.auth.idNguoiDung, tenLich: String(tenLich).trim(), tuNgay, denNgay, mucTieuKcalMoiNgay: mucTieuKcalMoiNgay ? Number(mucTieuKcalMoiNgay) : null });
   return sendSuccess(res, 201, 'Đã tạo lịch ăn.', row);
 });
 
-const detail = asyncHandler(async (req, res) => sendSuccess(res, 200, 'Chi tiết lịch ăn.', await layLich(req.params.id, req.auth.idNguoiDung)));
+const update = asyncHandler(async (req, res) => {
+  const planId = await sequelize.transaction(async (transaction) => {
+    const plan = await layLichDeGhi(req.params.id, req.auth.idNguoiDung, transaction);
+    const next = {
+      tenLich: req.body.tenLich ?? plan.tenLich,
+      tuNgay: req.body.tuNgay ?? plan.tuNgay,
+      denNgay: req.body.denNgay ?? plan.denNgay,
+      mucTieuKcalMoiNgay: req.body.mucTieuKcalMoiNgay ?? plan.mucTieuKcalMoiNgay,
+    };
+    kiemTraKhoangLich(next.tuNgay, next.denNgay);
+    const meals = await db.BuaAnTrongLich.findAll({
+      where: { idLichAn: plan.idLichAn },
+      attributes: ['ngay'],
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    const excludedMeal = meals.find(
+      (meal) => meal.ngay < next.tuNgay || meal.ngay > next.denNgay,
+    );
+    if (excludedMeal)
+      throw error(
+        409,
+        `Không thể cập nhật khoảng ngày vì bữa ăn ngày ${excludedMeal.ngay} sẽ nằm ngoài lịch.`,
+      );
+    await plan.update({ ...next, ngayCapNhat: new Date() }, { transaction });
+    return plan.idLichAn;
+  });
+  return sendSuccess(
+    res,
+    200,
+    'Đã cập nhật lịch ăn.',
+    xuatLichAn(await layLich(planId, req.auth.idNguoiDung)),
+  );
+});
+
+const detail = asyncHandler(async (req, res) => sendSuccess(
+  res,
+  200,
+  'Chi tiết lịch ăn.',
+  xuatLichAn(await layLich(req.params.id, req.auth.idNguoiDung)),
+));
 
 const addMeal = asyncHandler(async (req, res) => {
   const lich = await layLich(req.params.id, req.auth.idNguoiDung);
-  const { idMonAn, ngay, loaiBua = 'TRUA', soKhauPhan = 1, ghiChu } = req.body;
+  const { idMonAn, ngay, loaiBua, soKhauPhan, ghiChu } = req.body;
   kiemTraNgay(lich, ngay);
-  if (!LOAI_BUA.includes(loaiBua) || Number(soKhauPhan) <= 0) throw error(400, 'Loại bữa hoặc khẩu phần không hợp lệ.');
+  if (!LOAI_BUA.includes(loaiBua) || !Number.isFinite(Number(soKhauPhan)) || Number(soKhauPhan) <= 0 || Number(soKhauPhan) > 100)
+    throw error(400, 'Loại bữa hoặc khẩu phần không hợp lệ.');
   const monAn = await db.MonAn.findOne({ where: { idMonAn: Number(idMonAn), trangThai: 1, trangThaiDuyet: 'DA_DUYET' } });
   if (!monAn) throw error(404, 'Không tìm thấy món ăn.');
-  const row = await db.BuaAnTrongLich.create({ idLichAn: lich.idLichAn, idMonAn: monAn.idMonAn, ngay, loaiBua, soKhauPhan: Number(soKhauPhan), ghiChu: ghiChu || null });
+  await kiemTraMoCongThuc(req.auth.idNguoiDung, monAn);
+  const row = await sequelize.transaction(async (transaction) => {
+    const lockedPlan = await layLichDeGhi(
+      lich.idLichAn,
+      req.auth.idNguoiDung,
+      transaction,
+    );
+    kiemTraNgay(lockedPlan, ngay);
+    return db.BuaAnTrongLich.create(
+      {
+        idLichAn: lockedPlan.idLichAn,
+        idMonAn: monAn.idMonAn,
+        ngay,
+        loaiBua,
+        soKhauPhan: Number(soKhauPhan),
+        ghiChu: ghiChu || null,
+      },
+      { transaction },
+    );
+  });
   return sendSuccess(res, 201, 'Đã thêm bữa ăn.', row);
 });
 
@@ -159,58 +258,68 @@ const shopping = asyncHandler(async (req, res) => {
 });
 
 const autoGenerate = asyncHandler(async (req, res) => {
-  const plan = await layLich(req.params.id, req.auth.idNguoiDung);
   const goi = await layGoiHienTai(req.auth.idNguoiDung);
   if (!goi?.lapThucDonTuDong) throw error(403, 'Lập thực đơn tự động cần gói Pro hoặc Chef.');
-  const recipes = await db.MonAn.findAll({
-    where: { trangThai: 1, trangThaiDuyet: 'DA_DUYET' },
-    include: [dinhDuongInclude.include[0]],
-    order: [['diemDanhGia', 'DESC'], ['idMonAn', 'ASC']],
-    distinct: true,
-    limit: 40,
-  });
-  const candidates = recipes
-    .map((recipe) => {
-      const result = tinhDinhDuong(recipe);
-      return result.dayDuDuLieu && result.moiKhauPhan.nangLuongKcal > 0
-        ? { idMonAn: recipe.idMonAn, dinhDuong: result.moiKhauPhan }
-        : null;
-    })
-    .filter(Boolean);
-  if (candidates.length < 3)
-    throw error(
-      409,
-      'Cần ít nhất 3 công thức có đầy đủ khối lượng quy đổi và dữ liệu dinh dưỡng để tạo lịch.',
-    );
-  const target = Number(plan.mucTieuKcalMoiNgay) || 2000;
-  const rows = [];
-  const soLanDung = new Map();
-  for (const ngay of danhSachNgay(plan.tuNgay, plan.denNgay)) {
-    const selected = chonThucDonTrongNgay(candidates, target, soLanDung);
-    if (!selected)
+  const planId = await sequelize.transaction(async (transaction) => {
+    const plan = await layLichDeGhi(req.params.id, req.auth.idNguoiDung, transaction);
+    const currentLevel = Number(goi.capDo) || 0;
+    const accessibleLevels = Object.entries(CAP_DO)
+      .filter(([, level]) => level <= currentLevel)
+      .map(([code]) => code);
+    const recipes = await db.MonAn.findAll({
+      where: {
+        trangThai: 1,
+        trangThaiDuyet: 'DA_DUYET',
+        capTruyCapToiThieu: { [Op.in]: accessibleLevels },
+      },
+      include: [dinhDuongInclude.include[0]],
+      order: [['diemDanhGia', 'DESC'], ['idMonAn', 'ASC']],
+      distinct: true,
+      limit: 40,
+      transaction,
+    });
+    const candidates = recipes
+      .map((recipe) => {
+        const result = tinhDinhDuong(recipe);
+        return result.dayDuDuLieu && result.moiKhauPhan.nangLuongKcal > 0
+          ? { idMonAn: recipe.idMonAn, dinhDuong: result.moiKhauPhan }
+          : null;
+      })
+      .filter(Boolean);
+    if (candidates.length < 3)
       throw error(
         409,
-        `Không tìm được thực đơn cho ${ngay} đạt đồng thời mục tiêu kcal, protein, carbohydrate, chất béo, chất xơ và natri. Lịch cũ được giữ nguyên.`,
+        'Cần ít nhất 3 công thức bạn có quyền truy cập, có đầy đủ khối lượng quy đổi và dữ liệu dinh dưỡng để tạo lịch.',
       );
-    for (const meal of selected.items) {
-      rows.push({
-        idLichAn: plan.idLichAn,
-        idMonAn: meal.idMonAn,
-        ngay,
-        loaiBua: meal.loaiBua,
-        soKhauPhan: meal.soKhauPhan,
-        ghiChu: 'Tự động cân bằng theo mục tiêu dinh dưỡng của lịch.',
-      });
-      soLanDung.set(meal.idMonAn, (soLanDung.get(meal.idMonAn) || 0) + 1);
+    const target = Number(plan.mucTieuKcalMoiNgay) || 2000;
+    const rows = [];
+    const soLanDung = new Map();
+    for (const ngay of danhSachNgay(plan.tuNgay, plan.denNgay)) {
+      const selected = chonThucDonTrongNgay(candidates, target, soLanDung);
+      if (!selected)
+        throw error(
+          409,
+          `Không tìm được thực đơn cho ${ngay} đạt đồng thời mục tiêu kcal, protein, carbohydrate, chất béo, chất xơ và natri. Lịch cũ được giữ nguyên.`,
+        );
+      for (const meal of selected.items) {
+        rows.push({
+          idLichAn: plan.idLichAn,
+          idMonAn: meal.idMonAn,
+          ngay,
+          loaiBua: meal.loaiBua,
+          soKhauPhan: meal.soKhauPhan,
+          ghiChu: 'Tự động cân bằng theo mục tiêu dinh dưỡng của lịch.',
+        });
+        soLanDung.set(meal.idMonAn, (soLanDung.get(meal.idMonAn) || 0) + 1);
+      }
     }
-  }
-  await sequelize.transaction(async (transaction) => {
     await db.BuaAnTrongLich.destroy({ where: { idLichAn: plan.idLichAn }, transaction });
     await db.BuaAnTrongLich.bulkCreate(rows, { transaction });
+    return plan.idLichAn;
   });
-  const generated = await layLich(plan.idLichAn, req.auth.idNguoiDung);
+  const generated = await layLich(planId, req.auth.idNguoiDung);
   generated.setDataValue('danhGiaDinhDuong', danhGiaLich(generated));
-  return sendSuccess(res, 200, 'Đã lập thực đơn đạt mục tiêu dinh dưỡng.', generated);
+  return sendSuccess(res, 200, 'Đã lập thực đơn đạt mục tiêu dinh dưỡng.', xuatLichAn(generated));
 });
 
 const remove = asyncHandler(async (req, res) => {
@@ -219,4 +328,4 @@ const remove = asyncHandler(async (req, res) => {
   return sendSuccess(res, 200, 'Đã xóa lịch ăn.');
 });
 
-module.exports = { list, create, detail, addMeal, removeMeal, evaluate, shopping, autoGenerate, remove };
+module.exports = { list, create, update, detail, addMeal, removeMeal, evaluate, shopping, autoGenerate, remove };

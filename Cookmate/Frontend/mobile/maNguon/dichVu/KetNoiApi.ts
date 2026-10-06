@@ -44,6 +44,7 @@ const diaChiWebNoiBo = () => {
   if (Platform.OS !== 'web' || typeof window === 'undefined' || !laDiaChiNoiBo(window.location.hostname))
     return ''
   if (cauHinh) {
+    if (cauHinh.startsWith('/')) return `${window.location.origin}${cauHinh}`
     try {
       const url = new URL(cauHinh)
       url.hostname = window.location.hostname

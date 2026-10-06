@@ -5,6 +5,7 @@ router.use(authenticate);
 router.get('/', c.list);
 router.post('/', c.create);
 router.get('/:id', c.detail);
+router.patch('/:id', c.update);
 router.delete('/:id', c.remove);
 router.post('/:id/bua-an', c.addMeal);
 router.delete('/:id/bua-an/:mealId', c.removeMeal);

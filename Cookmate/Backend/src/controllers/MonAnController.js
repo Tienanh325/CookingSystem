@@ -139,23 +139,14 @@ const buildListWhere = async (query, admin = false) => {
   const keyword = normalizeText(query.q || query.search);
 
   if (keyword) {
-    where[Op.or] = [
-      {
-        tenMonAn: {
-          [Op.like]: `%${keyword}%`,
-        },
-      },
-      {
-        moTa: {
-          [Op.like]: `%${keyword}%`,
-        },
-      },
-      {
-        gioiThieu: {
-          [Op.like]: `%${keyword}%`,
-        },
-      },
-    ];
+    const nameCondition = { tenMonAn: { [Op.like]: `%${keyword}%` } };
+    if (String(query.nameOnly) === '1') where.tenMonAn = nameCondition.tenMonAn;
+    else
+      where[Op.or] = [
+        nameCondition,
+        { moTa: { [Op.like]: `%${keyword}%` } },
+        { gioiThieu: { [Op.like]: `%${keyword}%` } },
+      ];
   }
 
   const idDanhMuc = toPositiveInt(query.idDanhMuc);

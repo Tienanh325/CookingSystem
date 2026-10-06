@@ -260,6 +260,27 @@ async function main() {
   await mobile.getByLabel('Mật khẩu', { exact: true }).fill('Customer123!');
   await mobile.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
   await expect(mobile.getByText('Hôm nay mình', { exact: false })).toBeVisible();
+  await mobile.getByRole('tab', { name: /Lịch ăn/ }).click();
+  await mobile.getByLabel('Ngày bắt đầu (YYYY-MM-DD)', { exact: true }).fill('2026-11-10');
+  await mobile.getByLabel('Ngày kết thúc (YYYY-MM-DD)', { exact: true }).fill('2026-11-16');
+  await mobile.getByLabel('Mục tiêu kcal mỗi ngày', { exact: true }).fill('2000');
+  await mobile.getByRole('button', { name: 'Tạo lịch ăn', exact: true }).click();
+  await expect(mobile.getByRole('button', { name: 'Chỉnh sửa lịch ăn', exact: true })).toBeVisible();
+  await mobile.getByRole('button', { name: 'Chỉnh sửa lịch ăn', exact: true }).click();
+  await mobile.getByLabel('Ngày kết thúc (YYYY-MM-DD)', { exact: true }).fill('2026-11-17');
+  await mobile.getByLabel('Mục tiêu kcal mỗi ngày', { exact: true }).fill('2100');
+  await mobile.getByRole('button', { name: 'Lưu thay đổi', exact: true }).click();
+  await expect(mobile.getByText('Mục tiêu: 2100 kcal/ngày', { exact: true })).toBeVisible();
+  await mobile.getByLabel('Tên món ăn', { exact: true }).fill('Cơm gà');
+  await mobile.getByRole('button', { name: 'Chọn món Cơm gà gừng ấm áp', exact: true }).click();
+  await expect(mobile.getByRole('radio', { name: 'Bữa sáng', exact: true })).toBeVisible();
+  await expect(mobile.getByRole('radio', { name: 'Bữa trưa', exact: true })).toBeVisible();
+  await expect(mobile.getByRole('radio', { name: 'Bữa tối', exact: true })).toBeVisible();
+  await mobile.getByRole('radio', { name: 'Bữa sáng', exact: true }).click();
+  await mobile.getByRole('button', { name: 'Thêm vào bữa sáng', exact: true }).click();
+  await expect(mobile.getByText('Bữa sáng · Cơm gà gừng ấm áp · 1 khẩu phần', { exact: true })).toBeVisible();
+  await mobile.screenshot({ path: path.join(out, 'mobile-meal-calendar.png'), fullPage: true });
+  await mobile.getByRole('tab', { name: /Bếp nhà/ }).click();
   await mobile.getByRole('button', { name: 'Xem món Cơm gà gừng ấm áp', exact: true }).click();
   await mobile.getByRole('button', { name: 'Lưu yêu thích', exact: true }).click();
   await expect(mobile.getByRole('button', { name: 'Bỏ yêu thích', exact: true })).toBeVisible();
@@ -321,7 +342,7 @@ async function main() {
   await expect(mobile.getByText(/Face ID|Vân tay|Nhận mã OTP/)).toHaveCount(0);
   assert.deepEqual(errors, []);
   console.log(
-    'Mobile web UI: guest browsing, registration, favorite, cooking, review/comment, history, notifications, profile and logout passed.',
+    'Mobile web UI: guest browsing, registration, meal calendar, favorite, cooking, review/comment, history, notifications, profile and logout passed.',
   );
   console.log('Screenshots: .work/previews (native device testing still required).');
 }
